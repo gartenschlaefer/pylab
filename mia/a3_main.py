@@ -6,9 +6,7 @@ from scipy.io import wavfile
 from mia import *
 
 
-
-# Main function
-if __name__ == '__main__':
+def bariton():
 
   # read audiofile
   file_dir = './ignore/sounds/'
@@ -26,12 +24,11 @@ if __name__ == '__main__':
 
   n_frames = len(x) // hop
   print("n_frames: ", n_frames)
+  print("time: ", hop/fs * n_frames)
 
   # some vectors
   f = np.arange(0, fs/2, fs/N)
   frames = np.linspace(0, hop/fs * n_frames, n_frames)
-
-  print("time: ", hop/fs * n_frames)
 
   # windowing
   w = np.hanning(N)
@@ -84,7 +81,7 @@ if __name__ == '__main__':
   # load inst frequency
   f_est = np.load('f_est.npy')
 
-  # remove first entry
+  # remove first entry (bug in prev. code)
   f_est = np.delete(f_est, 0, 0)
 
   # frequency should be at c1 = 261,626Hz
@@ -144,8 +141,6 @@ if __name__ == '__main__':
   # plt.savefig('freq_mod_est_cue.png', dpi=150)
 
   # plt.show()
-
-
 
   # # --
   # # plot amplitude modulation
@@ -207,3 +202,161 @@ if __name__ == '__main__':
   # plt.specgram(x, 1024, fs)
   # plt.ylim(0, 2000)
   # plt.show()
+
+
+# --
+# test short term energy and zero crossing rate
+def test_ste_zcr():
+
+  # sample params
+  N = 1024
+  ol = N // 2
+  hop = N - ol
+
+  # windowing
+  w = np.hanning(N)
+
+  # test signal
+  fs = 44100
+  k = 1
+  A = 1
+  x = A * np.cos(2 * np.pi * k / N * np.arange(2 * N))
+
+  # some vectors
+  t = np.arange(0, len(x)/fs, 1/fs)
+
+  # buffer in frames
+  x_buff = buffer(x, N, ol)
+
+  # short term energy
+  E = st_energy(x_buff, w)
+
+  # zero crossing rate
+  zcr = zero_crossing_rate(x_buff, w)
+
+  # samples of frame middle points
+  frames = np.arange(hop, len(x), hop) / fs
+  #print(frames)
+
+  # --
+  # short term energy and zcr
+  
+  # plt.figure(2, figsize=(8, 4))
+  # plt.plot(t, x, label='cosine')
+  # plt.plot(frames, E, label='st energy', marker='o')
+  # plt.plot(frames, zcr, label='zcr', marker='o')
+
+  # for fi in frames:
+  #   plt.axvline(x=fi, dashes=(1, 1))
+
+  # plt.ylabel('magnitude')
+  # plt.xlabel('time [s]')
+  # plt.legend()
+  # plt.savefig('ste_zcr.png', dpi=150)
+
+  # plt.show()
+
+
+# --
+# Main function
+if __name__ == '__main__':
+
+  # --
+  # bariton analysis
+  #bariton()
+
+  # --
+  # low level features
+
+  print("--- low level features ---")
+
+  # test ste and zcr
+  #test_ste_zcr()
+
+
+  # --
+  # Speech recording
+
+  file_dir = './ignore/sounds/'
+  file_name = 'A0101B.wav'
+  fs, x = wavfile.read(file_dir + file_name)
+
+  
+  # sample params
+  N = 1024
+  ol = N // 2
+  hop = N - ol
+
+  n_frames = len(x) // hop
+
+  # prints variables
+  print("fs: ", fs)
+  print("sample len: ", len(x))
+  print("time: ", len(x)/fs)
+  print("n_frames: ", n_frames)
+
+  # some vectors
+  t = np.arange(0, len(x)/fs, 1/fs)
+
+  # windowing
+  w = np.hanning(N)
+
+  # buffer in frames
+  x_buff = buffer(x, N, ol)
+
+  # short term energy
+  E = st_energy(x_buff, w)
+
+  # zero crossing rate
+  zcr = zero_crossing_rate(x_buff, w)
+
+  # interesting region in seconds
+  t_roi = np.array([0.5, 1.2])
+
+  # handling with samples, times and frames
+  t_sample = np.arange(t_roi[0] * fs, t_roi[1] * fs)
+  t_sample = t_sample.astype(int)
+
+  frame_roi = t_roi * fs//hop 
+  frame_roi = frame_roi.astype(int)
+
+  frames = np.arange(frame_roi[0], frame_roi[1])
+  frames = frames.astype(int)
+
+  time_frames = np.arange(t_roi[0] + hop/fs, t_roi[1] + hop/fs, hop/fs) * fs
+  time_frames = time_frames.astype(int)
+  
+
+  # --
+  # plot audio file section
+  
+  plt.figure(2, figsize=(8, 4))
+  plt.plot(t[t_sample], x[t_sample], label='audiofile')
+
+  plt.plot(t[time_frames], E[frames] / 1000, label='st energy / 1000')
+  plt.plot(t[time_frames], zcr[frames] * 50, label='zcr * 50')
+
+  plt.ylabel('magnitude')
+  plt.xlabel('time [s]')
+  plt.grid()
+  plt.legend()
+  #plt.savefig('audio_measures.png', dpi=150)
+
+  plt.show()
+
+
+  # --
+  # plot audio file
+  
+  # plt.figure(1, figsize=(8, 4))
+  # plt.plot(t, x, label='audiofile')
+  # plt.ylabel('magnitude')
+  # plt.xlabel('time [s]')
+  # plt.xlim(t_start, t_end)
+  # plt.legend()
+  # plt.savefig('audiofile_zoom.png', dpi=150)
+
+  # plt.show()
+
+
+

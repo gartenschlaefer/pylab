@@ -84,3 +84,25 @@ def buffer(X, n, ol = 0):
       windows[wi] = X[wi * hop : (wi + 2) * hop]
 
   return windows
+
+
+# --
+# short term energy
+def st_energy(x, w):
+  return np.sum( np.multiply(np.power(x, 2), w), 1) / x.shape[1]
+
+
+# --
+# zero crossing rate
+def zero_crossing_rate(x, w):
+
+  # first sample
+  a = np.sign(x)
+
+  # zero handling
+  a[a==0] = 1
+
+  # second sample
+  b = np.sign(np.roll(x, -1))
+
+  return np.around( np.sum( np.multiply( np.abs(a - b), w ), 1) / 2 )
