@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy import signal
 from scipy.io import wavfile
+from get_phonemlabels import get_phonemlabels
 
 from mia import *
 
@@ -96,7 +97,7 @@ def bariton():
   # --
   # determine modulation params
 
-  # get start frame idx of significt frmes
+  # get start frame idx of significant frames
   n_start_frames = np.where(frames_impact == 1)[0][0]
   n_end_frames = n_frames - n_start_frames - peaks.shape[0]
 
@@ -326,15 +327,39 @@ if __name__ == '__main__':
   time_frames = np.arange(t_roi[0] + hop/fs, t_roi[1] + hop/fs, hop/fs) * fs
   time_frames = time_frames.astype(int)
   
+  # fphonem label file
+  file_path = "./ignore/"
+  file_name = "A0101_Phonems.txt"
+
+  # get phonem labels
+  phonems = get_phonemlabels(file_path + file_name)
 
   # --
   # plot audio file section
   
   plt.figure(2, figsize=(8, 4))
-  plt.plot(t[t_sample], x[t_sample], label='audiofile')
+  plt.plot(t[t_sample], x[t_sample] / max(x[t_sample]), label='audiofile', linewidth=0.5)
 
-  plt.plot(t[time_frames], E[frames] / 1000, label='st energy / 1000')
-  plt.plot(t[time_frames], zcr[frames] * 50, label='zcr * 50')
+  plt.plot(t[time_frames], E[frames] / max(E[frames]), label='st energy')
+  plt.plot(t[time_frames], zcr[frames] / max(zcr[frames]), label='zcr')
+
+  # plot phonems in normed plot
+  for ph in phonems:
+
+    # start time limit
+    if float(ph[0]) < t_roi[0]: 
+      continue; 
+
+    # stop time limit
+    if float(ph[0]) > t_roi[1]: 
+      break; 
+
+    # draw vertical lines
+    plt.axvline(x=float(ph[0]), dashes=(1, 1), color='k')
+
+    # write phone label
+    plt.text(x=float(ph[0]), y=0.9, s=ph[2], color='k', fontweight='semibold')
+
 
   plt.ylabel('magnitude')
   plt.xlabel('time [s]')
