@@ -7,13 +7,21 @@ import librosa
 from mia import *
 
 
-def plot_wavefile(x, fs):
+def plot_wavefile(x, fs, name):
 
   # some vectors
   t = np.arange(0, len(x)/fs, 1/fs)
 
-  plt.figure(1)
-  plt.plot(t, x)
+  plt.figure(1, figsize=(8, 4))
+  plt.plot(t, x, label='audiofile')
+
+  plt.title(name)
+  plt.ylabel('magnitude')
+  plt.xlabel('time [s]')
+
+  plt.grid()
+  #plt.legend()
+  plt.savefig(name + '.png', dpi=150)
   plt.show()
 
 
@@ -36,5 +44,5 @@ if __name__ == '__main__':
     print("fs: ", fs)
 
     # plot wave file
-    plot_wavefile(x, fs)
+    plot_wavefile(x, fs, file_name)
     
