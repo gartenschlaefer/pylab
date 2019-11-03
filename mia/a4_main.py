@@ -21,7 +21,43 @@ def plot_wavefile(x, fs, name):
 
   plt.grid()
   #plt.legend()
-  plt.savefig(name + '.png', dpi=150)
+  #plt.savefig(name + '.png', dpi=150)
+  plt.show()
+
+
+def plot_frequency_response(x, fs, name):
+
+  # some vectors
+  f = np.arange(0, fs/2, fs/N)
+
+  plt.figure(2, figsize=(8, 4))
+  plt.plot(f, x, label='frequency response')
+
+  plt.title(name)
+  plt.ylabel('magnitude [dB]')
+  plt.xlabel('frequency [Hz]')
+
+  plt.grid()
+  #plt.legend()
+  #plt.savefig(name + '.png', dpi=150)
+  plt.show()
+
+
+def plot_cepstrum(x, fs, name):
+
+  # some vectors
+  q = np.arange(0, len(x)/fs, 1/fs)
+
+  plt.figure(2, figsize=(8, 4))
+  plt.plot(q, x, label='cepstrum')
+
+  plt.title(name)
+  plt.ylabel('magnitude')
+  plt.xlabel('quefrency [s]')
+
+  plt.grid()
+  #plt.legend()
+  #plt.savefig(name + '.png', dpi=150)
   plt.show()
 
 
@@ -33,6 +69,13 @@ if __name__ == '__main__':
   file_dir = './ignore/sounds/'
   file_names = ('bass-drum-kick.wav', 'cymbal.wav', 'hihat-closed.wav', 'snare.wav')
 
+  # window length
+  N = 1024
+
+  # windowing params
+  ol = N // 2
+  hop = N - ol
+
   # run through all files
   for file_name in file_names:
 
@@ -42,7 +85,56 @@ if __name__ == '__main__':
     x, fs = librosa.load(file_dir + file_name)
 
     print("fs: ", fs)
+    n_frames = len(x) // hop
+    print("frame length: ", n_frames)
+
+    # --
+    # STFT
+
+    # windowing
+    w = np.hanning(N)
+
+    # apply windows
+    x_buff = np.multiply(w, buffer(x, N, ol))
+
+    # transformation matrix
+    H = np.exp(1j * 2 * np.pi / N * np.outer(np.arange(N), np.arange(N)))
+
+    # transformed signal
+    X = np.dot(x_buff, H)
+
+    # log
+    Y = 20 * np.log10(2 / N * np.abs(X[:, 0:512]))
+
+    # --
+    # MFCC
+
+    # filter bands
+    M = 10
+
+    m = np.linspace(0, f_to_mel(fs / 2), M)
+    #print("mel bands: ", m)
+
+
+    Ex = np.power(2 / N * np.abs(X[:, 0:512]), 2)
+
+
+    # -- 
+    # cepstrum
+
+    #plot_cepstrum(cepstrum(x_buff[0], N)[0:512], N, file_name)
+
+
+
+    # --
+    # plot stuff
 
     # plot wave file
-    plot_wavefile(x, fs, file_name)
+    #plot_wavefile(x, fs, file_name)
+
+    # plot frequency response
+    #plot_frequency_response(Y[n_frames // 2], fs, file_name)
+
+    # sample params
+
     

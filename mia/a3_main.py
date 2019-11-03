@@ -40,7 +40,7 @@ def bariton():
   # transformation matrix
   H = np.exp(1j * 2 * np.pi / N * np.outer(np.arange(N), np.arange(N)))
 
-  # transfored signal
+  # transformed signal
   X = np.dot(x_buff, H)
 
   # log

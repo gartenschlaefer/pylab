@@ -5,6 +5,33 @@ import numpy as np
 
 
 #--
+# compute cepstrum
+def cepstrum(x, N):
+
+  # transformation matrix
+  H = np.exp(1j * 2 * np.pi / N * np.outer(np.arange(N), np.arange(N)))
+
+  # transfored signal
+  Ex = np.log( np.power( np.abs(np.dot(x, H)), 2) )
+
+  cep = np.power( np.abs( np.dot(Ex, H) / N ), 2 )
+
+  return cep
+
+
+#--
+# mel to frequency
+def mel_to_f(m):
+  return 700 * (np.exp(m / 1127.01048) - 1)
+
+
+#--
+# mel to frequency
+def f_to_mel(f):
+  return 1127.01048 * np.log(1 + f / 700)
+
+
+#--
 # principle argument
 def princarg(p):
   return np.mod(p + np.pi, -2 * np.pi) + np.pi
