@@ -61,6 +61,24 @@ def plot_cepstrum(x, fs, name):
   plt.show()
 
 
+def plot_mel_transform():
+
+  f = np.linspace(0, 10000, 10000)
+  mel = f_to_mel(f)
+
+  plt.figure(3, figsize=(8, 4))
+  plt.plot(f, mel, label='mel')
+
+  plt.ylabel('mel')
+  plt.xlabel('frequency [Hz]')
+
+  plt.grid()
+  #plt.legend()
+  #plt.savefig('mel_transform.png', dpi=150)
+  plt.show()
+
+
+
 # --
 # Main function
 if __name__ == '__main__':
@@ -75,6 +93,9 @@ if __name__ == '__main__':
   # windowing params
   ol = N // 2
   hop = N - ol
+
+  # check if mel transform works
+  plot_mel_transform()
 
   # run through all files
   for file_name in file_names:
@@ -109,10 +130,11 @@ if __name__ == '__main__':
     # --
     # MFCC
 
+
+
     # filter bands
     M = 10
 
-    m = np.linspace(0, f_to_mel(fs / 2), M)
     #print("mel bands: ", m)
 
 

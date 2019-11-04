@@ -4,7 +4,18 @@
 import numpy as np
 
 
-#--
+# --
+def mel_band_weights(M, fs, N=1024, ol_rate=0.5):
+  """
+  mel_band_weights create a weight matrix of triangluar mel band weights for a filter bank.
+  This is used to compute MFCC.
+  """
+  m = np.linspace(0, f_to_mel(fs / 2), M)
+
+  ol = int(N * ol_rate)
+
+
+# --
 # compute cepstrum
 def cepstrum(x, N):
 
@@ -19,19 +30,19 @@ def cepstrum(x, N):
   return cep
 
 
-#--
+# --
 # mel to frequency
 def mel_to_f(m):
-  return 700 * (np.exp(m / 1127.01048) - 1)
+  return 700 * (np.power(10, m / 2595) - 1)
 
 
-#--
-# mel to frequency
+# --
+# frequency to mel
 def f_to_mel(f):
-  return 1127.01048 * np.log(1 + f / 700)
+  return 2595 * np.log10(1 + f / 700)
 
 
-#--
+# --
 # principle argument
 def princarg(p):
   return np.mod(p + np.pi, -2 * np.pi) + np.pi
@@ -78,7 +89,7 @@ def inst_f(X, frame, p, R, N, fs):
 
 # --
 # buffer equivalent
-def buffer(X, n, ol = 0):
+def buffer(X, n, ol=0):
 
   # number of samples in window
   n = int(n)
