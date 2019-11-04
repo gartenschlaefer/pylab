@@ -3,16 +3,106 @@
 
 import numpy as np
 
+import matplotlib.pyplot as plt
 
 # --
+# triangle
+def triangle(M):
+
+  # create triangle
+  tri = np.concatenate((np.linspace(0, 1, M // 2), np.linspace(1 - 1 / (M // 2), 0, (M // 2) - 1)))
+
+  #a = np.array([0, 0, 0, 1, 0, 0, 0])
+
+  #c = np.convolve(a, tri)
+
+  #print(tri)
+  #plt.figure(1)
+  #plt.plot(c)
+  #plt.show()
+
+  return tri
+
+
+
+
+# --
+# mel band weights
 def mel_band_weights(M, fs, N=1024, ol_rate=0.5):
   """
   mel_band_weights create a weight matrix of triangluar mel band weights for a filter bank.
   This is used to compute MFCC.
   """
-  m = np.linspace(0, f_to_mel(fs / 2), M)
 
-  ol = int(N * ol_rate)
+  print("M: ", M)
+
+  ol = int(N // M * ol_rate)
+  hop = N // M - ol
+  n_bands = N // hop
+
+  mel_bands = np.linspace(0, f_to_mel(fs / 2), M)
+
+  mel_f = np.linspace(0, f_to_mel(fs / 2), N)
+
+  f = mel_to_f(mel_f)
+
+
+  mel_samples = np.linspace(hop - 1, N - N // n_bands - 1, n_bands - 1)
+
+  #f_samples = mel_to_f(mel_samples / N * f_to_mel(fs / 2)) * N / (fs / 2)
+
+  #f_samples = np.round(f_samples)
+
+  print("ol: ", ol)
+  print("hop: ", hop)
+  print("n_bands: ", n_bands)
+  print("mel_bands: " , mel_bands)
+
+  print("mel_samples: ", mel_samples)
+  #print("f_samples: ", f_samples)
+
+
+
+  #hop_f = np.roll(f_samples, -1) - f_samples
+  #print("hop f samples: ", hop_f)
+
+
+
+
+  # triangle shape
+  tri = triangle(hop * 2)
+
+  # weight init
+  w = np.zeros((n_bands, N))
+
+  w_f = np.zeros((n_bands, N))
+
+
+  plt.figure(1)
+
+  for mi in range(n_bands - 1):
+    print("band: ", mi)
+
+    # for equidistant mel scale
+    w[mi][int(mel_samples[mi])] = 1
+    w[mi] = np.convolve(w[mi, :], tri, mode='same')
+
+
+    mel_s = (mel_to_f(mel_f) * (N / fs)).astype(int)
+
+    print(mel_s)
+
+    w_f[mi, :] = w[mi, mel_s]
+    # for frequency scale
+    #w_f[mi][int(mel_samples[mi])] = 1
+    #w_f[mi] = np.convolve(w_f[mi, :], triangle(hop * 2), mode='same')
+
+    #plt.plot(mel_f, w[mi, :])
+    plt.plot(mel_f, w_f[mi, :])
+
+  plt.show()
+
+
 
 
 # --

@@ -85,7 +85,8 @@ if __name__ == '__main__':
 
   # read audiofile
   file_dir = './ignore/sounds/'
-  file_names = ('bass-drum-kick.wav', 'cymbal.wav', 'hihat-closed.wav', 'snare.wav')
+  #file_names = ('bass-drum-kick.wav', 'cymbal.wav', 'hihat-closed.wav', 'snare.wav')
+  file_names = ('bass-drum-kick.wav', 'cymbal.wav')
 
   # window length
   N = 1024
@@ -95,7 +96,7 @@ if __name__ == '__main__':
   hop = N - ol
 
   # check if mel transform works
-  plot_mel_transform()
+  #plot_mel_transform()
 
   # run through all files
   for file_name in file_names:
@@ -133,10 +134,10 @@ if __name__ == '__main__':
 
 
     # filter bands
-    M = 10
+    M = 8
 
     #print("mel bands: ", m)
-
+    mel_band_weights(M, fs, N)
 
     Ex = np.power(2 / N * np.abs(X[:, 0:512]), 2)
 
