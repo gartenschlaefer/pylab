@@ -78,6 +78,54 @@ def plot_mel_transform():
   plt.show()
 
 
+def plot_weights(w_f, w_mel, fs, N):
+
+  mel_f = np.linspace(0, f_to_mel(fs / 2), N)
+  f = np.linspace(0, fs / 2, N)
+
+  # mel weights
+  plt.figure(4, figsize=(8, 4))
+  for w in w_mel:
+    plt.plot(mel_f, w, label='mel weights')
+  plt.ylabel('magnitude')
+  plt.xlabel('mel')
+  #plt.savefig('weights_mel.png', dpi=150)
+  plt.show()
+
+  # f weights
+  plt.figure(4, figsize=(8, 4))
+  for w in w_f:
+    plt.plot(f, w, label='f weights')
+  plt.ylabel('magnitude')
+  plt.xlabel('frequency [Hz]')
+  #plt.savefig('weights_f.png', dpi=150)
+  plt.show()
+
+
+def plot_mfcc_frame(mfcc, name):
+
+  plt.figure(5)
+  for m in range(4):
+    plt.plot(mfcc[m, :], label='mfcc' + str(m))
+  plt.title(name)
+  plt.ylabel('magnitude')
+  plt.xlabel('filter band')
+  plt.legend(title='from frames:')
+  plt.ylim((-50, 50))
+  plt.grid()
+  plt.savefig('mfcc_frames' + name + '.png', dpi=150)
+  plt.show()
+
+
+def plot_mfcc_spec(mfcc, name):
+  plt.figure(6)
+  plt.title(file_name)
+  plt.imshow(np.transpose(mfcc), aspect='auto', vmin=-20, vmax=40)
+  plt.ylabel('filter band')
+  plt.xlabel('time frame')
+  plt.colorbar()
+  plt.savefig('mfcc_spec' + name + '.png', dpi=150)
+  plt.show()
 
 # --
 # Main function
@@ -85,11 +133,10 @@ if __name__ == '__main__':
 
   # read audiofile
   file_dir = './ignore/sounds/'
-  #file_names = ('bass-drum-kick.wav', 'cymbal.wav', 'hihat-closed.wav', 'snare.wav')
-  file_names = ('bass-drum-kick.wav', 'cymbal.wav')
+  file_names = ['bass-drum-kick.wav', 'cymbal.wav', 'hihat-closed.wav', 'snare.wav']
 
   # window length
-  N = 1024
+  N = 512
 
   # windowing params
   ol = N // 2
@@ -110,6 +157,7 @@ if __name__ == '__main__':
     n_frames = len(x) // hop
     print("frame length: ", n_frames)
 
+
     # --
     # STFT
 
@@ -126,27 +174,48 @@ if __name__ == '__main__':
     X = np.dot(x_buff, H)
 
     # log
-    Y = 20 * np.log10(2 / N * np.abs(X[:, 0:512]))
+    Y = 20 * np.log10(2 / N * np.abs(X[:, 0:N//2]))
+
 
     # --
     # MFCC
 
-
-
     # filter bands
     M = 8
+    mel_bands = np.linspace(0, f_to_mel(fs / 2), M)
+    print("mel bands: ", mel_bands)
 
-    #print("mel bands: ", m)
-    mel_band_weights(M, fs, N)
+    # weights
+    w_f, w_mel, n_bands = mel_band_weights(M, fs, N//2)
 
-    Ex = np.power(2 / N * np.abs(X[:, 0:512]), 2)
+    # plot the weights
+    #plot_weights(w_f, w_mel, fs, N//2)
+
+    # energy of fft
+    E = np.power(2 / N * np.abs(X[:, 0:N//2]), 2)
+
+    # sum the weighted energies
+    u = np.inner(E, w_f[0:-1, :])
+
+    # log
+    u = np.log(u)
+    #print(u)
+
+    # discrete cosine transform
+    mfcc = dct(u, n_bands - 1)
+
+    print("mfcc: ", mfcc.shape)
+    #print("mfcc: ", mfcc)
+
+    plot_mfcc_frame(mfcc, file_name)
+    plot_mfcc_spec(mfcc, file_name)
 
 
+    
     # -- 
     # cepstrum
 
     #plot_cepstrum(cepstrum(x_buff[0], N)[0:512], N, file_name)
-
 
 
     # --
