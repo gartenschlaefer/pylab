@@ -8,8 +8,7 @@ from get_annotations import get_annotations
 # --
 def plot_wavefile(x, fs, name, annotation_file, save=False):
 
-  # parts
-  annotations = get_annotations(annotation_file)
+
   #anno_text = ['part 1', 'part 2', 'part 3']
 
   # time vector
@@ -19,14 +18,7 @@ def plot_wavefile(x, fs, name, annotation_file, save=False):
   plt.figure(1, figsize=(8, 4))
   plt.plot(t, x, label='audiofile', linewidth=1)
 
-  # annotations
-  for i, a in enumerate(annotations):
 
-    # draw vertical lines
-    plt.axvline(x=float(a), dashes=(1, 1), color='k')
-
-    # write labels
-    #plt.text(x=float(a), y=0.85, s=anno_text[i], color='k', fontweight='semibold')
 
   plt.title(name)
   plt.ylabel('magnitude')
@@ -78,9 +70,12 @@ if __name__ == '__main__':
 
   # read audiofile
   file_dir = './ignore/sounds/'
-  file_names = ['megalovania.wav']
 
-  annotation_file_names = ['megalovania.txt', 'megalovania_parts.txt']
+  #file_names = ['megalovania.wav']
+  file_names = ['imperial_march_plastic_trumpet.wav']
+
+  #annotation_file_names = ['megalovania.txt', 'megalovania_parts.txt']
+  annotation_file_names = ['imperial_march_plastic_trumpet.txt']
 
   # window length
   N = 512
@@ -97,6 +92,7 @@ if __name__ == '__main__':
     # load file
     x, fs = librosa.load(file_dir + file_name)
 
+    print("x: ", x.shape)
     print("fs: ", fs)
     n_frames = len(x) // hop
     print("frame length: ", n_frames)
@@ -131,20 +127,50 @@ if __name__ == '__main__':
     # complex domain
     c = complex_domain_onset(X, N)
 
-    thres = adaptive_threshold(c)
+    # adaptive threshold
+    thresh = adaptive_threshold(c, H=5)
 
+    # get onsets from measure and threshold
+    onset = thresholding_onset(c, thresh)
+
+    # annotations
+    anno = get_annotations(file_dir + annotation_file_names[0])
+
+    # calculate onset times
+    onset_times = (onset * np.arange(0, len(onset)) * hop + hop/2) / fs 
+    onset_times = onset_times[onset_times > hop / 2 / fs]
+
+    # score measure
+    score = score_onset_detection(onset_times, anno, tolerance=0.02)
+
+
+    # --
+    # awesome plot
 
     # time vector
     t = np.arange(0, len(x)/fs, 1/fs)
 
-
     # frame vector
     time_frames = (np.arange(0, len(x) - hop, hop) + hop / 2) / fs 
 
+    # plot
     plt.figure(3)
     plt.plot(t, x / max(x), label='audiofile', linewidth=1)
     plt.plot(time_frames, c / max(c), label='complex domain', linewidth=1)
-    plt.plot(time_frames, thres / max(c), label='complex domain', linewidth=1)
+    plt.plot(time_frames, thresh / max(c), label='adaptive threshold', linewidth=1)
+
+    #plt.plot(time_frames, onset, label='onset', linewidth=1)
+
+    # annotations labels
+    for i, a in enumerate(anno):
+      # draw vertical lines
+      plt.axvline(x=float(a), dashes=(2, 2), color='k')
+
+
+    # annotations targets
+    for i, a in enumerate(onset_times):
+      # draw vertical lines
+      plt.axvline(x=float(a), dashes=(5, 1), color='g')
 
     plt.title('complex domain onset')
     plt.ylabel('magnitude')

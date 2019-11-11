@@ -7,47 +7,116 @@ import matplotlib.pyplot as plt
 
 
 # --
+# score for onset detection
+def score_onset_detection(onsets, labels, tolerance=0.02):
+  """
+  score functions: Precision, Recall and F-measure
+  comparison of onsets to actual labels with tolerance in time measure [s]
+  """
+  
+  # totals:
+  total_onsets = len(onsets)
+  total_labels = len(labels)
+
+  # tolerance band of each label
+  neg_label_tolerance = labels - tolerance
+  pos_label_tolerance = labels + tolerance
+
+  # hits of onsets
+  hit_onsets = np.zeros(total_onsets)
+
+  # measure hits of onsets
+  for i, onset in enumerate(onsets):
+
+    # count onset hits
+    hit_onsets[i] = np.sum(np.logical_and(neg_label_tolerance < onset, pos_label_tolerance > onset))
+
+  # true positives, hit label
+  TP = sum(hit_onsets == 1)
+
+  # false positives, false alarm
+  FP = sum(hit_onsets == 0)
+
+  # hits of labels
+  hit_labels = np.zeros(total_labels)
+
+  # measure hits of labels
+  for i, label in enumerate(labels):
+
+    # count label hits
+    hit_labels[i] = np.sum(np.logical_and(label - tolerance < onsets, label + tolerance > onsets))
+
+  # false negatives, label missed
+  FN = sum(hit_labels == 0)
+
+  # print
+  print("total onsets: ", total_onsets)
+  print("total labels: ", total_labels)
+  print("true positives: ", TP)
+  print("false positives: ", FP)
+  print("false negatives: ", FN)
+
+  
+  
+# --
+# thresholding
+def thresholding_onset(x, thresh):
+  """
+  thresholding for onset events
+  params: 
+    x - input sequence
+    thresh - threshold vector
+  """
+
+  # init
+  onset = np.zeros(len(x))
+
+  # set to one if over threshold
+  onset[x > thresh] = 1
+
+  # get only single onset -> attention edge problems
+  onset = onset - np.logical_and(onset, np.roll(onset, 1))
+
+
+  return onset
+
+
+# --
 # adaptive threshold
-def adaptive_threshold(g, H=10, alpha=0, beta=1):
+def adaptive_threshold(g, H=10, alpha=0.05, beta=1):
   """
   adaptive threshold with sliding window
   """
 
-  hop = 1
-
-  print("g: ", g.shape)
-  print("g: ", len(g))
+  # threshold
+  thresh = np.zeros(len(g))
+  #alpha_thresh = np.zeros(len(g))
 
   # sliding window
-  w = np.zeros(len(g))
-  w[0:H] = 1
+  for i in np.arange(H//2, len(g) - H//2):
 
-  g_k = np.zeros((len(g), len(g)))
+    # median thresh
+    thresh[i] = np.median(g[i - H//2 : i + H//2])
 
-  for row in range(len(g)):
-    g_k[row] = g * w
-
-    print(g_k)
-    # window slides
-    w = np.roll(w, 1)
-    #print(w)
+    # offset 
+    #alpha_thresh[i] = alpha * thresh[i]
 
 
-  #print(max(g_k))
+  # linear mapping
+  #thresh = alpha_thresh + beta * thresh
+  thresh = alpha * np.max(thresh) + beta * thresh
 
-  t = alpha + beta * np.median(g_k, axis=0)
+  #print("max thresh: ", np.max(thresh))
 
-  print(t.shape)
-  print(max(t))
 
-  return t
+  return thresh
 
 
 # -- 
 # phase deviation
 def complex_domain_onset(X, N):
   """
-  complex domain approach
+  complex domain approach for onset detection
   params:
     X - fft
     N - window size
@@ -76,6 +145,9 @@ def complex_domain_onset(X, N):
 # -- 
 # phase deviation
 def phase_deviation(X, N):
+  """
+  phase_deviation of STFT
+  """
 
   # get unwrapped phase
   phi0 = np.unwrap(np.angle(X[:, 0:N//2]))
@@ -111,12 +183,6 @@ def phase_deviation(X, N):
 def amplitude_diff(X, N):
   X = np.abs(X[:, 0:N//2])
   return np.sum((np.roll(X, -1) - X)[:-1], 1)
-
-
-# --
-# complex domain
-def complex_domain():
-  pass
 
 
 # --
