@@ -7,7 +7,7 @@ import librosa
 from mia import *
 
 
-def plot_wavefile(x, fs, name):
+def plot_wavefile(x, fs, name, save):
 
   # some vectors
   t = np.arange(0, len(x)/fs, 1/fs)
@@ -21,7 +21,9 @@ def plot_wavefile(x, fs, name):
 
   plt.grid()
   #plt.legend()
-  #plt.savefig(name + '.png', dpi=150)
+  if save:
+    plt.savefig(name + '.png', dpi=150)
+    
   plt.show()
 
 

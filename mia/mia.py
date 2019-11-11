@@ -7,14 +7,127 @@ import matplotlib.pyplot as plt
 
 
 # --
+# adaptive threshold
+def adaptive_threshold(g, H=10, alpha=0, beta=1):
+  """
+  adaptive threshold with sliding window
+  """
+
+  hop = 1
+
+  print("g: ", g.shape)
+  print("g: ", len(g))
+
+  # sliding window
+  w = np.zeros(len(g))
+  w[0:H] = 1
+
+  g_k = np.zeros((len(g), len(g)))
+
+  for row in range(len(g)):
+    g_k[row] = g * w
+
+    print(g_k)
+    # window slides
+    w = np.roll(w, 1)
+    #print(w)
+
+
+  #print(max(g_k))
+
+  t = alpha + beta * np.median(g_k, axis=0)
+
+  print(t.shape)
+  print(max(t))
+
+  return t
+
+
+# -- 
+# phase deviation
+def complex_domain_onset(X, N):
+  """
+  complex domain approach
+  params:
+    X - fft
+    N - window size
+  """
+
+  # calculate phase deviation
+  d = phase_deviation(X, N)
+
+  R = np.abs(X[:, 0:N//2])
+
+  R_h = np.roll(R, 1, axis=0)
+
+  gamma = np.sqrt(np.power(R_h, 2) + np.power(R, 2) - 2 * R_h * R * np.cos(d))
+
+  # clean up first two indices
+  gamma[0] = np.zeros(gamma.shape[1])
+
+  print("gamma: ", gamma.shape)
+
+  eta = np.sum(gamma, axis=1)
+  print("eta: ", eta.shape)
+
+  return eta
+
+
+# -- 
+# phase deviation
+def phase_deviation(X, N):
+
+  # get unwrapped phase
+  phi0 = np.unwrap(np.angle(X[:, 0:N//2]))
+  print("phi size: ", phi0.shape)
+
+  phi1 = np.roll(phi0, 1, axis=0)
+  phi2 = np.roll(phi0, 2, axis=0)
+
+  # calculate phase derivation
+  d = princarg(phi0 - 2 * phi1 + phi2)
+
+  # clean up first two indices
+  d[0:2] = np.zeros(d.shape[1])
+
+  # plt.figure(2)
+  # plt.plot(np.transpose(abs(X)[100:102, :]))
+
+  # plt.figure(3)
+  # plt.plot(d[1000, :])
+
+  # plt.figure(1)
+  # plt.plot(np.transpose(phi0[1000, :]), label='ph1')
+  # plt.plot(np.transpose(phi1[1000, :]), label='ph2')
+  # plt.plot(np.transpose(phi2[1000, :]), label='ph3')
+  # plt.legend()
+  # plt.show()
+
+  return d
+
+
+# -- 
+# Amplitude diff
+def amplitude_diff(X, N):
+  X = np.abs(X[:, 0:N//2])
+  return np.sum((np.roll(X, -1) - X)[:-1], 1)
+
+
+# --
+# complex domain
+def complex_domain():
+  pass
+
+
+# --
 # dct
-def dct(x, N):
+def dct(X, N):
   
   # transformation matrix
   H = np.cos(np.pi / N * np.outer((np.arange(N) + 0.5), np.arange(N)))
 
   # transformed signal
-  return np.dot(x, H)
+  return np.dot(X, H)
 
 
 # --
@@ -68,17 +181,15 @@ def mel_band_weights(M, fs, N=1024, ol_rate=0.5):
   return (w_f, w_mel, n_bands)
 
 
-
-
 # --
 # compute cepstrum
-def cepstrum(x, N):
+def cepstrum(X, N):
 
   # transformation matrix
   H = np.exp(1j * 2 * np.pi / N * np.outer(np.arange(N), np.arange(N)))
 
   # transfored signal
-  Ex = np.log( np.power( np.abs(np.dot(x, H)), 2) )
+  Ex = np.log( np.power( np.abs(np.dot(X, H)), 2) )
 
   cep = np.power( np.abs( np.dot(Ex, H) / N ), 2 )
 
@@ -127,14 +238,6 @@ def inst_f(X, frame, p, R, N, fs):
   # calculate phases of the peaks between two frames
   phi1 = np.angle(X)[frame][p]
   phi2 = np.angle(X)[frame + 1][p]
-
-  # f = np.arange(0, fs/2, fs/N)
-  # plt.figure(1)
-  # plt.plot(f, np.angle(X)[frame][0:512])
-  # plt.plot(f, np.angle(X)[frame + 1][0:512])
-  # plt.show()
-  # print("phi1: ", phi1)
-  # print("phi2: ", phi2)
 
   omega_k = 2 * np.pi * p / N
   delta_phi = omega_k * R - princarg(phi2 - phi1 - omega_k * R)
@@ -187,15 +290,15 @@ def st_energy(x, w):
 
 # --
 # zero crossing rate
-def zero_crossing_rate(x, w):
+def zero_crossing_rate(X, w):
 
   # first sample
-  a = np.sign(x)
+  a = np.sign(X)
 
   # zero handling
   a[a==0] = 1
 
   # second sample
-  b = np.sign(np.roll(x, -1))
+  b = np.sign(np.roll(X, -1))
 
   return np.around( np.sum( np.multiply( np.abs(a - b), w ), 1) / 2 )
