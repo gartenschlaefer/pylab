@@ -19,9 +19,10 @@ if __name__ == '__main__':
   hop = N - ol
 
   # test signal
-  k = 40
-  A = 3
-  x = A * np.cos(2 * np.pi * k / N * np.arange(N))
+  k = [40, 80, 120, 160]
+  A = [1, 0.5, 0.25, 1]
+
+  x = np.dot(A, np.cos(2 * np.pi / N  * np.outer(k, np.arange(N)))) 
 
   # some vectors
   t = np.arange(0, N/fs, 1/fs)
@@ -38,13 +39,37 @@ if __name__ == '__main__':
   #Y = 20 * np.log10(2 / N * np.abs(X[0:512]))
   Y = 2 / N * np.abs(X[0:512])
 
+  print('inverse fft is equal: ', np.allclose(x, xi))
 
-  print('is equal: ', np.allclose(x, xi))
 
+
+  # --
+  # cepstrum
   cep = cepstrum(x, N)
 
+
   # plot somethingthing
-  plt.figure(1)
-  plt.plot(cep)
+  # plt.figure(1)
+  # plt.plot(cep)
+  # plt.show()
+
+
+  # --
+  # ACF
+
+  #x = np.random.normal(0, 1, N)
+
+  r = acf(x)
+
+  r2 = np.correlate(x, x, mode='full') / (2 * N + 1)
+
+  print('correlation is equal: ', np.allclose(r[:-1], r2))
+
+
+  plt.figure(2)
+  plt.plot(x, label='x')
+  plt.plot(r, label='r')
+  plt.plot(r2, label='r2')
+  plt.legend()
   plt.show()
 

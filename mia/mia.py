@@ -6,14 +6,61 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
+
+# --
+# ACF
+def acf(x):
+
+  # length of signal
+  N = len(x)
+
+  # single sided acf
+  xm = np.zeros((2 * N, N))
+
+  # padded with zeros
+  x_pad = np.pad(x, (N-1, N))
+
+  for i in np.arange(2 * N):
+    
+    # rotated signal
+    xm[i, :] = x_pad[i:i+N]
+
+  # ACF function
+  r = np.dot(xm, x) / (2 * N + 1)
+
+  return r
+
+
+
+  
+
 # --
 # score for onset detection
-def score_onset_detection(onsets, labels, tolerance=0.02):
+def score_onset_detection(onsets, labels, tolerance=0.02, time_interval=()):
   """
   score functions: Precision, Recall and F-measure
   comparison of onsets to actual labels with tolerance in time measure [s]
+  params:
+    onsets - onsets instances in time space
+    labels - label instances in time space
+    tolerance - tolerance between target onset and actual label
+
+  return:
+    (P, R, F) - (Precision, Recall, F-Measure)
   """
+
+  #print("onsets: ", onsets)
+  #print("labels: ", labels)
   
+  if time_interval:
+    onsets = onsets[onsets > time_interval[0]]
+    onsets = onsets[onsets < time_interval[1]]
+    labels = labels[labels > time_interval[0]]
+    labels = labels[labels < time_interval[1]]
+
+  #print("onsets: ", onsets)
+  #print("labels: ", labels)
+
   # totals:
   total_onsets = len(onsets)
   total_labels = len(labels)
@@ -49,12 +96,16 @@ def score_onset_detection(onsets, labels, tolerance=0.02):
   # false negatives, label missed
   FN = sum(hit_labels == 0)
 
-  # print
-  print("total onsets: ", total_onsets)
-  print("total labels: ", total_labels)
-  print("true positives: ", TP)
-  print("false positives: ", FP)
-  print("false negatives: ", FN)
+  # precision
+  P = TP / (TP + FP) * 100
+
+  # recall
+  R = TP / (TP + FN) * 100
+
+  # f-measure
+  F = 2 * P * R / (P + R)
+
+  return (P, R, F)
 
   
   
@@ -125,19 +176,20 @@ def complex_domain_onset(X, N):
   # calculate phase deviation
   d = phase_deviation(X, N)
 
+  # ampl target
   R = np.abs(X[:, 0:N//2])
 
+  # ampl prediction
   R_h = np.roll(R, 1, axis=0)
 
+  # complex measure
   gamma = np.sqrt(np.power(R_h, 2) + np.power(R, 2) - 2 * R_h * R * np.cos(d))
 
   # clean up first two indices
   gamma[0] = np.zeros(gamma.shape[1])
 
-  print("gamma: ", gamma.shape)
-
+  # sum all frequency bins
   eta = np.sum(gamma, axis=1)
-  print("eta: ", eta.shape)
 
   return eta
 
@@ -151,8 +203,6 @@ def phase_deviation(X, N):
 
   # get unwrapped phase
   phi0 = np.unwrap(np.angle(X[:, 0:N//2]))
-  print("phi size: ", phi0.shape)
-
   phi1 = np.roll(phi0, 1, axis=0)
   phi2 = np.roll(phi0, 2, axis=0)
 
@@ -181,8 +231,17 @@ def phase_deviation(X, N):
 # -- 
 # Amplitude diff
 def amplitude_diff(X, N):
+
+  # absolute amplitude
   X = np.abs(X[:, 0:N//2])
-  return np.sum((np.roll(X, -1) - X)[:-1], 1)
+
+  # difference measure
+  d = np.sum(X - np.roll(X, 1), 1)
+
+  # clean up first
+  d[0] = 0
+
+  return d
 
 
 # --
@@ -327,23 +386,24 @@ def buffer(X, n, ol=0):
   # number of windows
   win_num = (len(X) - n) // hop + 1 
 
-  # remeining samples
+  # remaining samples
   r = int(np.remainder(len(X), hop))
   if r:
     win_num += 1;
-
 
   # segments
   windows = np.zeros((win_num, n))
 
   # segmentation
   for wi in range(0, win_num):
+
     # remainder
     if wi == win_num - 1 and r:
       windows[wi] = np.concatenate((X[wi * hop :], np.zeros(hop - r)))
+
     # no remainder
     else:
-      windows[wi] = X[wi * hop : (wi + 2) * hop]
+      windows[wi] = X[wi * hop : (wi * hop) + n]
 
   return windows
 
