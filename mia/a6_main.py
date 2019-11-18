@@ -59,6 +59,30 @@ def plot_filter_bank(x, fs):
   plt.show()
 
 
+def plot_erbs_onset(onset_samples, oni, N_i, fs, x_of, y, fc):
+
+  t = np.arange(onset_samples[oni], onset_samples[oni] + N_i) / fs
+
+
+  plt.figure(1, figsize=(8, 5))
+
+  plt.plot(t, x_of[oni, :], label='x')
+
+  of = max(x_of[oni, :])
+
+  for ch, c in enumerate(fc):
+    #plt.plot(t, y[ch, oni, :] + ch/100, label='erbs')
+    plt.fill_between(t, (len(fc) - ch)/100 + of, y[ch, oni, :] + (len(fc) - ch)/100 + of, label='erbs fc={:.0f}Hz'.format(c))
+
+  plt.ylabel('magnitude [dB]')
+  plt.xlabel('time [s]')
+
+  plt.grid()
+  #plt.savefig('erb_filter_bank.png', dpi=150)
+  plt.legend(loc='upper left')
+  plt.show()
+
+
 
 # --
 # Main function
@@ -166,19 +190,43 @@ if __name__ == '__main__':
     # ERBs filter bank
 
     # params
-    n_bands = 10
-    f_low = 100
-    f_high = 5000
+    n_bands = 12
+    f_low = 60
+    f_high = 4000
 
     # filter bank
     y, fc = erb_filter_bank(x_of, fs, n_bands, f_low, f_high)
 
+    # flip matrices so that ch = 0 is the lowest f band
+    #y = np.flip(y, axis=0)
+    #fc = np.flip(fc, axis=0)
+
     # y is of shape [ch, onset, num_samples]
     print("size of y: ", y.shape)
+    print("center freq: ", fc)
+
+
+    # plot
+
+    # onset index
+    oni = 0
+
+    # plot
+    plot_erbs_onset(onset_samples, oni, N_i, fs, x_of, y, fc)
+
+
+
+
+
 
     #plot_filter_bank(y[:, 2, :], fs)
+
+
+    # --
     # simple hair cell model
 
+
+    # --
     # Autocorrelogram
 
 
