@@ -3,7 +3,34 @@
 
 import numpy as np
 
-import matplotlib.pyplot as plt
+
+
+# --
+# Midi
+def get_midi_events(file_name):
+
+  import mido
+
+  mid = mido.MidiFile(file_name)
+
+  midi_events = np.empty((0, 4), float)
+
+  # cumulative time
+  cum_time = 0
+
+  for msg in mid:
+
+    # meta info
+    if msg.is_meta:
+      continue
+
+    # cumulative time add
+    cum_time += msg.time
+
+    # add to events
+    midi_events = np.vstack((midi_events, (msg.type == 'note_on', msg.note, msg.time, cum_time)))
+
+  return midi_events
 
 
 
@@ -30,9 +57,6 @@ def acf(x):
 
   return r
 
-
-
-  
 
 # --
 # score for onset detection
