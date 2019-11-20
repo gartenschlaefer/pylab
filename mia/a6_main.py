@@ -5,9 +5,81 @@ import librosa
 from mia import *
 from get_annotations import get_annotations
 from erb_filter import erb_filter_bank
+from scipy import signal
+
+# midi
+from pretty_midi import note_number_to_name
+from pretty_midi import note_number_to_hz
 
 
-def plot_onsets(x, fs, hop, c, thresh, onset_times, file_name):
+
+def plot_erbs_onset(file_name, onset_samples, N_i, fs, x_of, y, fc, oni=0):
+
+  # time vector
+  t = np.arange(onset_samples[oni], onset_samples[oni] + N_i) / fs
+
+  plt.figure(1, figsize=(8, 5))
+
+  # offset to signal
+  of = max(x_of[oni, :])
+
+  for ch, c in enumerate(fc):
+
+    # hop vertically for center frequencies
+    hop_up = (len(fc) - ch) / 100
+
+    # plot fills
+    plt.fill_between(t, hop_up + of, y[ch, oni, :] + hop_up + of, label='erbs fc={:.0f}Hz'.format(c))
+
+  # print signal
+  plt.plot(t, x_of[oni, :], label='x')
+
+  plt.title(file_name + ' at the {}. predicted onset'.format(oni+1))
+  plt.ylabel('magnitude')
+  plt.xlabel('time [s]')
+
+  plt.grid()
+  plt.legend(loc='upper left', prop={'size': 7})
+  #plt.savefig(file_name.split('.')[0] + '_erbs_onset.png', dpi=150)
+  plt.show()
+
+
+
+def plot_autocorrelogram(file_name, onset_samples, N_i, fs, x_of, y, fc, oni=0, peaks=[]):
+
+  # time vector
+  t = np.arange(onset_samples[oni], onset_samples[oni] + N_i) / fs
+
+  plt.figure(1, figsize=(8, 5))
+
+  # offset to signal
+  of = max(x_of[oni, :])
+
+  for ch, c in enumerate(fc):
+    # hop vertically for center frequencies
+    hop_up = (len(fc) - ch) / 100
+    #plt.plot(t, y[ch, oni, :] + ch/100, label='erbs')
+    plt.fill_between(t, hop_up + of, y[ch, oni, :] + hop_up + of, label='corr erbs fc={:.0f}Hz'.format(c))
+
+  plt.plot(t, x_of[oni, :], label='sum')
+
+  # print peaks
+  if not len(peaks) == 0:
+    for p in peaks[oni, :]:
+      plt.axvline(x=p/fs + t[0], dashes=(2, 2), color='k')
+
+  plt.title(file_name + ' at the {}. predicted onset'.format(oni+1))
+  plt.ylabel('magnitude')
+  plt.xlabel('lag [s]')
+
+  plt.grid()
+  plt.legend(prop={'size': 7})
+  #plt.savefig(file_name.split('.')[0] + '_autocorrelogram.png', dpi=150)
+  plt.show()
+
+
+
+def plot_onsets(x, fs, hop, c, thresh, onset_times, file_name, midi_onsets, f_est, tolerance=0.02):
     # --
     # awesome plot
 
@@ -18,69 +90,69 @@ def plot_onsets(x, fs, hop, c, thresh, onset_times, file_name):
     time_frames = (np.arange(0, len(x) - hop, hop) + hop / 2) / fs 
 
     # plot
-    plt.figure(3)
+    plt.figure(3, figsize=(8, 4))
     plt.plot(t, x / max(x), label='audiofile', linewidth=1)
     plt.plot(time_frames, c / max(c), label='complex domain', linewidth=1)
     plt.plot(time_frames, thresh / max(c), label='adaptive threshold', linewidth=1)
 
+    # annotations midi labels
+    for i, mid in enumerate(midi_onsets):
+
+      # draw vertical lines
+      if i == 0: 
+        # put label to legend
+        plt.axvline(x=mid[3], dashes=(2, 2), color='k', label="midi-labels")
+        #plt.text(x=mid[3], y=0.9, s=note_number_to_name(mid[1]), color='k', fontweight='semibold')
+        plt.text(x=mid[3], y=0.9, s=round(note_number_to_hz(mid[1]), 1), color='k', fontweight='semibold')
+        
+      else:
+        plt.axvline(x=float(mid[3]), dashes=(2, 2), color='k')
+        #plt.text(x=mid[3], y=0.9, s=note_number_to_name(mid[1]), color='k', fontweight='semibold')
+        plt.text(x=mid[3], y=0.9, s=round(note_number_to_hz(mid[1]), 1), color='k', fontweight='semibold')
+
+    # tolerance band of each label
+    neg_label_tolerance = midi_onsets[:, 3] - tolerance
+    pos_label_tolerance = midi_onsets[:, 3] + tolerance
+    green_label = False
+    red_label = False
+
     # annotations targets
     for i, a in enumerate(onset_times):
+
+      # decide if correct or not -> color
+      is_tp = np.sum(np.logical_and(neg_label_tolerance < a, pos_label_tolerance > a))
+
       # draw vertical lines
-      plt.axvline(x=float(a), dashes=(5, 1), color='g')
+      if is_tp == 1:
+
+        if green_label == False: 
+          # put label
+          green_label = True
+          plt.axvline(x=float(a), dashes=(5, 1), color='g', label="targets TP")
+          plt.text(x=float(a), y=1, s=f_est[i], color='g', fontweight='semibold')
+        else:
+          plt.axvline(x=float(a), dashes=(5, 1), color='g')
+          plt.text(x=float(a), y=1, s=f_est[i], color='g', fontweight='semibold')
+
+      else:
+        if red_label == False: 
+          # put label
+          red_label = True
+          plt.axvline(x=float(a), dashes=(5, 1), color='r', label="targets FP")
+          plt.text(x=float(a), y=0.8, s=f_est[i], color='r', fontweight='semibold')
+        else:
+          plt.axvline(x=float(a), dashes=(5, 1), color='r')
+          plt.text(x=float(a), y=0.8, s=f_est[i], color='r', fontweight='semibold')
 
     plt.title(file_name)
     plt.ylabel('magnitude')
     plt.xlabel('time [s]')
 
-    plt.legend()
+    plt.grid()
+    plt.legend(prop={'size': 7})
+
+    #plt.savefig('class' + str(r) + '.png', dpi=150)
     plt.show()
-
-
-
-# delete later
-def plot_filter_bank(x, fs):
-
-  N = int(x.shape[1])
-
-  # frequency vector
-  f = np.arange(0, fs/2, fs/N)
-
-  # plot
-  plt.figure(1, figsize=(8, 4))
-  Y = 20 * np.log10(np.abs(np.fft.fft(x)))[:, 0:N//2]
-  plt.plot(f, np.transpose(Y))
-
-  plt.xscale('log')
-  plt.ylabel('magnitude [dB]')
-  plt.xlabel('frequency [Hz]')
-
-  plt.grid()
-  #plt.savefig('erb_filter_bank.png', dpi=150)
-  plt.show()
-
-
-def plot_erbs_onset(onset_samples, oni, N_i, fs, x_of, y, fc):
-
-  t = np.arange(onset_samples[oni], onset_samples[oni] + N_i) / fs
-
-
-  plt.figure(1, figsize=(8, 5))
-
-  plt.plot(t, x_of[oni, :], label='x')
-
-  of = max(x_of[oni, :])
-
-  for ch, c in enumerate(fc):
-    #plt.plot(t, y[ch, oni, :] + ch/100, label='erbs')
-    plt.fill_between(t, (len(fc) - ch)/100 + of, y[ch, oni, :] + (len(fc) - ch)/100 + of, label='erbs fc={:.0f}Hz'.format(c))
-
-  plt.ylabel('magnitude [dB]')
-  plt.xlabel('time [s]')
-
-  plt.grid()
-  #plt.savefig('erb_filter_bank.png', dpi=150)
-  plt.legend(loc='upper left')
-  plt.show()
 
 
 
@@ -91,8 +163,8 @@ if __name__ == '__main__':
   # read audiofile
   file_dir = './ignore/sounds/f0/'
 
-  #file_names = ['BWV846M_P_sel.wav', 'BWV847.wav', 'guitar_riff_1.wav', 'guitar_riff_2.wav']
-  file_names = ['guitar_riff_1.wav']
+  file_names = ['BWV847.wav', 'guitar_riff_1.wav', 'guitar_riff_2.wav']
+  #file_names = ['guitar_riff_1.wav']
 
 
   # window length
@@ -110,10 +182,11 @@ if __name__ == '__main__':
     # load file
     x, fs = librosa.load(file_dir + file_name)
 
+    # print some signal stuff
     print("x: ", x.shape)
     print("fs: ", fs)
-    n_frames = len(x) // hop
-    print("frame length: ", n_frames)
+    print("frame length: ", len(x) // hop)
+
 
     # --
     # STFT
@@ -130,8 +203,6 @@ if __name__ == '__main__':
     # transformed signal
     X = np.dot(x_buff, H)
 
-    # log
-    #Y = 20 * np.log10(2 / N * np.abs(X[:, 0:N//2]))
 
     # --
     # onset detection
@@ -149,11 +220,6 @@ if __name__ == '__main__':
     onset_times = (onsets * np.arange(0, len(onsets)) * hop + N / 2) / fs 
     onset_times = onset_times[onset_times > N / 2 / fs]
     
-
-
-    # plot onsets
-    #plot_onsets(x, fs, hop, c, thresh, onset_times, file_name)
-
 
     # --
     # get time interval of onsets
@@ -178,56 +244,113 @@ if __name__ == '__main__':
 
     # window onset frames
     for i, on in enumerate(onset_samples):
-      
-      # onset frame
-      x_of[i, :] = x[on:on+N_i] * w
 
-      # input response
-      #x_of[i, :] = np.zeros(N_i)
-      #x_of[i, 0] = 1
+      # boundary
+      if (on + N_i + N // 2) < len(x):
+
+        # onset frame
+        x_of[i, :] = x[on+N//2:on+N_i+N//2] * w
+
 
     # --
     # ERBs filter bank
 
     # params
     n_bands = 12
-    f_low = 60
+    f_low = 80
     f_high = 4000
 
     # filter bank
     y, fc = erb_filter_bank(x_of, fs, n_bands, f_low, f_high)
 
-    # flip matrices so that ch = 0 is the lowest f band
-    #y = np.flip(y, axis=0)
-    #fc = np.flip(fc, axis=0)
-
-    # y is of shape [ch, onset, num_samples]
-    print("size of y: ", y.shape)
-    print("center freq: ", fc)
-
-
-    # plot
-
-    # onset index
-    oni = 0
-
-    # plot
-    plot_erbs_onset(onset_samples, oni, N_i, fs, x_of, y, fc)
-
-
-
-
-
-
-    #plot_filter_bank(y[:, 2, :], fs)
-
 
     # --
     # simple hair cell model
 
+    # rectification
+    y_hc = y.clip(min=0)
+
+    # low pass filtering
+
+    # low pass filter params
+    order = 4
+    f_cut = 1000
+
+    # low pass filter
+    b, a = signal.butter(order, f_cut / (fs/2), 'low')
+    y_hc = signal.filtfilt(b, a, y_hc)
+
 
     # --
     # Autocorrelogram
+
+    y_cor = np.zeros(y_hc.shape)
+
+    # all channels
+    for ch in np.arange(len(fc)):
+
+      # all onsets
+      for oni in np.arange(len(onset_samples)):
+
+        # correlation
+        y_cor[ch, oni, :] = np.correlate(y_hc[ch, oni, :], y_hc[ch, oni, :], mode='full')[N_i-1:]
+
+
+    # --
+    # Summary of the Autocorrelogram
+
+    # sum over all channels
+    y_sum = np.sum(y_cor, axis=0)
+
+
+    # --
+    # Pitch detection
+
+    # estimated frequency
+    f_est = np.zeros(len(onset_samples))
+    peaks = np.zeros((len(onset_samples), 5))
+
+    # find peaks:
+    for oni in np.arange(len(onset_samples)):
+
+      h_max = max(y_sum[oni, :])
+
+      # find peaks
+      p, v = signal.find_peaks(y_sum[oni, :], height=(0.3 * h_max, h_max))
+
+      # get second highes peak
+      if not len(v['peak_heights']) == 0:
+        v_max_idx = np.argsort(v['peak_heights'])[-1]
+
+        # difference from highest to second highest peak
+        diff_samples = p[v_max_idx]
+
+        # frequency estimate
+        f_est[oni] = round(fs / diff_samples, 1)
+
+      else: 
+        f_est[oni] = 0
+
+
+    # print onset index
+    #oni = 2
+
+    # plot stuff
+    #plot_erbs_onset(file_name, onset_samples, N_i, fs, x_of, y_hc, fc, oni=oni)
+    #plot_autocorrelogram(file_name, onset_samples, N_i, fs, y_sum, y_cor, fc, oni=oni)
+
+
+    # --
+    # Midi comparison
+
+    # get midi events
+    midi_events = get_midi_events(file_dir + file_name.split('.')[0] + '.mid')
+
+    # only onsets
+    midi_onsets = midi_events[midi_events[:, 0] == 1]
+
+    # plot onsets
+    plot_onsets(x, fs, hop, c, thresh, onset_times, file_name, midi_onsets, f_est, tolerance=0.02)
 
 
 
