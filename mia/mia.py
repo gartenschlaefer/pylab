@@ -4,9 +4,27 @@
 import numpy as np
 
 
+def warped_lambda(fs):
+  """
+  calc lambda for allpass so that warped frequencies resemble human auditory system
+  """
+  return 1.0674 * np.power(2 / np.pi * np.arctan(0.06583 * fs / 1000), 0.5) - 0.1916
+
+
+def allpass_coeffs(lam):
+  """
+  comput allpass coefficients
+  """
+
+  # filter coeffs
+  b = np.array([-lam, 1])
+  a = np.array([1, -lam])
+
+  return b, a
+
 
 # --
-# Midi
+# Midi events
 def get_midi_events(file_name):
 
   import mido
@@ -32,6 +50,19 @@ def get_midi_events(file_name):
 
   return midi_events
 
+
+def midi2f(m):
+  """
+  midi to frequency
+  """
+  return 440 * np.power(2, ((m - 69) / 12))
+
+
+def f2midi(f):
+  """
+  frequency to midi quantization
+  """
+  return np.round(12 * np.log(f / 440) / np.log(2) + 69)
 
 
 # --
