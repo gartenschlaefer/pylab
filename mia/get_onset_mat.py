@@ -30,7 +30,7 @@ def get_onset_mat(file_name, var_name):
 if __name__ == '__main__':
 
   # file name to mat file
-  file_name = '01-AchGottundHerr-GTF0s.mat'
+  file_name = './ignore/sounds/mpitch/01-AchGottundHerr-GTF0s.mat'
 
   # var name
   var_name = 'GTF0s'
@@ -61,7 +61,7 @@ if __name__ == '__main__':
   plt.grid()
   plt.legend()
 
-  plt.savefig('onsets_' + file_name.split('.')[0] + '.png', dpi=150)
+  #plt.savefig('onsets_' + file_name.split('.')[0] + '.png', dpi=150)
   plt.show()
 
 

@@ -2,6 +2,77 @@
 # library for mia - Music Information retrivAl
 
 import numpy as np
+from scipy import signal
+
+
+def adaptive_whitening(X, mu=0.997, r=0.6):
+
+  # num of frames
+  n_frames = X.shape[0]
+  N = X.shape[1] // 2
+
+  # single band dft
+  X_abs = np.abs(X[:, 0:N])
+
+  # peak spectral profile
+  P = np.zeros((n_frames, N))
+
+  # first profile
+  P[0, :] = np.maximum(X_abs[0, :], r * np.ones(N))
+
+  # run throgh all frames
+  for n in range(1, n_frames):
+
+    # other profiles
+    P[n, :] = np.maximum(X_abs[n, :], r * np.ones(N), mu * P[n-1, :])
+
+
+  # whitening
+  X_white = np.divide(X[:, 0:N], P)
+
+  return X_white
+
+
+def color_fader(c1, c2, mix):
+  """
+  fades colors
+  """
+  import matplotlib as mpl
+
+  # convert colors to rgb
+  c1 = np.array(mpl.colors.to_rgb(c1))
+  c2 = np.array(mpl.colors.to_rgb(c2))
+
+  return mpl.colors.to_hex((1 - mix) * c1 + mix * c2)
+  
+
+def lpc_corr(x, fs=44100, warped=False):
+  
+  # usual autocorrelation
+  if warped == False:
+    return np.correlate(x, x, mode='full')[len(x)-1:]
+
+  # laged stuff
+  x_lag = x
+
+  # length
+  N = len(x)
+
+  # correlation array
+  r = np.zeros(N)
+
+  # allpass coeffs
+  b, a = allpass_coeffs(warped_lambda(fs))
+
+  for i in range(N):
+    
+    # corr with warped lag
+    r[i] = np.sum(x * x_lag)
+
+    # warped lag
+    x_lag = signal.lfilter(b, a, x_lag)
+
+  return r
 
 
 def warped_lambda(fs):
@@ -454,7 +525,7 @@ def buffer(X, n, ol=0):
 
     # remainder
     if wi == win_num - 1 and r:
-      windows[wi] = np.concatenate((X[wi * hop :], np.zeros(hop - r)))
+      windows[wi] = np.concatenate((X[wi * hop :], np.zeros(n - len(X[wi * hop :]))))
 
     # no remainder
     else:
