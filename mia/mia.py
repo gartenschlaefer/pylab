@@ -5,8 +5,24 @@ import numpy as np
 from scipy import signal
 
 
-def adaptive_whitening(X, mu=0.997, r=0.6):
+def half_wave_rect(x):
+  """
+  half wave rectification
+  """
+  return (x + np.abs(x)) / 2
 
+
+def spectral_flux(X):
+  """
+  spectral flux for beat detection
+  """
+  return np.sum(half_wave_rect(np.diff(X)), axis=1)
+
+
+def adaptive_whitening(X, mu=0.997, r=0.6):
+  """
+  adaptive whitening
+  """
   # num of frames
   n_frames = X.shape[0]
   N = X.shape[1] // 2
@@ -383,10 +399,10 @@ def dct(X, N):
 
 # --
 # triangle
-def triangle(M):
+def triangle(M, N):
 
   # create triangle
-  return np.concatenate((np.linspace(0, 1, M // 2), np.linspace(1 - 1 / (M // 2), 0, (M // 2) - 1)))
+  return np.concatenate((np.linspace(0, 1, M), np.linspace(1 - 1 / N, 0, N - 1)))
 
 
 # --
@@ -396,6 +412,7 @@ def mel_band_weights(M, fs, N=1024, ol_rate=0.5):
   mel_band_weights create a weight matrix of triangluar mel band weights for a filter bank.
   This is used to compute MFCC.
   """
+  M = int(M * ol_rate)
 
   # overlapping stuff
   ol = int(N // M * ol_rate)
@@ -408,12 +425,16 @@ def mel_band_weights(M, fs, N=1024, ol_rate=0.5):
   mel_samples = np.linspace(hop - 1, N - N // n_bands - 1, n_bands - 1)
   f_samples = np.round(mel_to_f(mel_samples / N * f_to_mel(fs / 2)) * N / (fs / 2))
 
+  # add last one
+  f_samples = np.append(f_samples, N)
+  mel_samples = np.round(mel_samples)
+
   # complicated hop sizes for frequency scale
-  hop_f = (f_samples - np.roll(f_samples, + 1)) + 1
-  hop_f[0] = f_samples[0] + 1
+  hop_f = (f_samples - np.roll(f_samples, +1))
+  hop_f[0] = f_samples[0]
 
   # triangle shape
-  tri = triangle(hop * 2)
+  tri = triangle(hop, hop+1)
 
   # weight init
   w_mel = np.zeros((n_bands, N))
@@ -426,8 +447,8 @@ def mel_band_weights(M, fs, N=1024, ol_rate=0.5):
     w_mel[mi] = np.convolve(w_mel[mi, :], tri, mode='same')
 
     # for frequency scale
-    w_f[mi][int(f_samples[mi])] = 1
-    w_f[mi] = np.convolve(w_f[mi, :], triangle(hop_f[mi] * 2), mode='same')
+    w_f[mi, int(f_samples[mi])] = 1
+    w_f[mi] = np.convolve(w_f[mi], triangle(hop_f[mi]+1, hop_f[mi]+1), mode='same')
 
   return (w_f, w_mel, n_bands)
 
@@ -530,6 +551,44 @@ def buffer(X, n, ol=0):
     # no remainder
     else:
       windows[wi] = X[wi * hop : (wi * hop) + n]
+
+  return windows
+
+
+# --
+# buffer equivalent
+def buffer2D(X, n, ol=0):
+
+  # number of samples in window
+  n = int(n)
+
+  # overlap
+  ol = int(ol)
+
+  # hopsize
+  hop = n - ol
+
+  # number of windows
+  win_num = (X.shape[0] - n) // hop + 1 
+
+  # remaining samples
+  r = int(np.remainder(X.shape[0], hop))
+  if r:
+    win_num += 1;
+
+  # segments
+  windows = np.zeros((win_num, n, X.shape[1]), dtype=complex)
+
+  # segmentation
+  for wi in range(0, win_num):
+
+    # remainder
+    if wi == win_num - 1 and r:
+      windows[wi] = np.concatenate((X[wi * hop :], np.zeros((n - X[wi * hop :].shape[0], X.shape[1]))))
+
+    # no remainder
+    else:
+      windows[wi, :] = X[wi * hop : (wi * hop) + n, :]
 
   return windows
 

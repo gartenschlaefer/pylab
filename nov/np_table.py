@@ -13,6 +13,8 @@ def np_table(name, a, header=[], params=[]):
     @returns:
       None
   """
+  # precision
+  np.set_printoptions(precision=4)
 
   table_str = '\\begin{table}[ht!]\n\\begin{center}\n\\begin{tabular}{'
 
@@ -42,9 +44,9 @@ def np_table(name, a, header=[], params=[]):
   for row in range(a.shape[0]):
 
     for col in range(a.shape[1] - 1):
-      table_str += '{:.4f} & '.format(a[row][col])
+      table_str += '{} & '.format(a[row][col])
 
-    table_str += ' {:.4f} \\\\\n'.format(a[row][col+1])
+    table_str += ' {} \\\\\n'.format(a[row][col+1])
 
   # footer
   table_str += '\\hline\n\\end{tabular}\n\\end{center}\n\\caption{' + name +'}\n\\label{tab:' + name +'}\n\\end{table}\n\\noindent'
