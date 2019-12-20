@@ -1,0 +1,54 @@
+--
+Augmented Reality - Assignment 1 - Camera Pose Estimation
+Christian Walter
+
+
+--
+Task
+
+In this Pose Estimation task a checkerboard was used as marker.
+The pipeline mainly follows the tutorial from [1]
+
+
+--
+Camera Calibration
+
+First the camera was calibrated using a checkerboard printed on a paper and sticked to a cardboard.
+Here multiple photos from different angles onto the checkerboard were done with a Smartphone.
+
+- The object points of the checkerboard marker were created
+- The image points were extracted from the photos -> cv2.findChessboardCorners, and stored to an array 
+- using cv2.calibrateCamera, which implements [2], gives back the intrinsic camera parameter as well as the distortion of the lens
+- this parameters were save to files
+
+
+--
+Pose Estimation
+
+- A video with different angles onto the checkerboard was done -> input_video
+- Camera Calibration parameters were retrieved from the files
+
+- Each frame of the input_video was read:
+-- the key points of the checkerboard were retrieved and refined
+-- the PnP-problem was solved with cv2.solvePnPRansac -> translation, rotation onto image space
+-- object points of a Christmas tree were projected onto the image plane
+-- the Christmas tree was rendered into the frame
+
+- Outputs a wonderful video with a checkerboard and a rendered Christmas Tree onto it.
+
+
+--
+Conclusion
+
+With the help of the tutorial [1], it was easy to start with this pose estimation task.
+The main changes were merely rendering a Christmas Tree 3D object and handling the frames for the video.
+The output video shows that the algorithm works in general, but acts weird when the angles change too much and the zero point of the projection jumps somewhere else. 
+Also sometime the corners were not found and the Christmas Tree could not be rendered onto it.
+Further improvements and probably a better marker, which is not rotation symmetric, should be used, to give a more natural output.
+
+
+--
+References:
+
+[1] https://docs.opencv.org/3.4/d7/d53/tutorial_py_pose.html
+[2] A Flexible New Technique for Camera Calibration, Zhengyou Zhang
