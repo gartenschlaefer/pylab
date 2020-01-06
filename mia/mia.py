@@ -5,6 +5,100 @@ import numpy as np
 from scipy import signal
 
 
+def chroma_median_filter(chroma, frames):
+  """
+  Median filtering of the chroma values in between two frames
+  """
+  # init
+  m_chroma = np.zeros((chroma.shape[0], len(frames)))
+
+  # for each frame
+  for i, frame in enumerate(frames):
+
+    # median filter frames
+    m_chroma[:, i] = np.median(chroma[:, frame:frames[i]+1], axis=1)
+
+  return m_chroma
+
+
+def create_chord_mask(maj7=False, g6=False):
+
+  # dur
+  dur_template = np.array([1, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0])
+
+  # mol
+  mol_template = np.array([1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0])
+
+  # maj7
+  maj7_template = np.array([0.75, 0, 0, 0, 0.75, 0, 0, 0.75, 0, 0, 0, 1.2])
+
+  # 6
+  g6_template = np.array([0.75, 0, 0, 0, 0.75, 0, 0, 0.75, 0, 1, 0, 0])
+
+  # chroma labels
+  chroma_labels = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
+
+  # chord labels
+  chord_labels = chroma_labels + [c + "m" for c in chroma_labels]
+
+  # templates concatenated
+  chord_templates = np.array([dur_template, mol_template])
+
+  # append maj7
+  if maj7 ==  True:
+    chord_templates = np.vstack((chord_templates, maj7_template))
+    chord_labels = chord_labels + [c + "maj7" for c in chroma_labels]
+
+  if g6 == True:
+    chord_templates = np.vstack((chord_templates, g6_template))
+    chord_labels = chord_labels + [c + "6" for c in chroma_labels]
+
+  # init mask
+  chord_mask = np.empty((0, 12), int)
+
+  # go through all templates
+  for chord_template in chord_templates:
+    
+    # all chroma values
+    for c in range(12):
+
+      # add to events
+      chord_mask = np.vstack((chord_mask, np.roll(chord_template, c)))
+
+
+
+  return chord_mask, chroma_labels, chord_labels
+
+
+def filter_HPCP_to_Chroma(tuned_hpcp, bins_per_octave, filter_type='mean'):
+  """
+  filter hpcp bins per chroma to a single chroma value, mean and median filters are possible
+  """
+  if filter_type == 'mean':
+    chroma = np.mean(np.abs(buffer2D(tuned_hpcp, bins_per_octave // 12)), axis=1)
+
+  else:
+    chroma = np.median(np.abs(buffer2D(tuned_hpcp, bins_per_octave // 12)), axis=1)
+
+  return chroma
+
+
+def histogram_HPCP(hpcp, bins_per_octave):
+  """
+  create histogram of tuning bins over all chroma and frames
+  """
+  return np.sum(np.sum(np.abs(buffer2D(hpcp, bins_per_octave // 12)), axis=0), axis=1)
+
+
+
+def HPCP(C, n_octaves, bins_per_octave=12):
+  """
+  Harmonic Pitch Class Profile calculated from cqt C
+  """
+  return np.sum(np.abs(buffer2D(C, bins_per_octave)), axis=0)
+
+
+
 def half_wave_rect(x):
   """
   half wave rectification
