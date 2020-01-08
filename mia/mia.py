@@ -7,7 +7,7 @@ from scipy import signal
 
 def chroma_median_filter(chroma, frames):
   """
-  Median filtering of the chroma values in between two frames
+  Median filtering of the chroma values in between two consecutive frames
   """
   # init
   m_chroma = np.zeros((chroma.shape[0], len(frames)))
@@ -49,6 +49,7 @@ def create_chord_mask(maj7=False, g6=False):
     chord_templates = np.vstack((chord_templates, maj7_template))
     chord_labels = chord_labels + [c + "maj7" for c in chroma_labels]
 
+  # append g6
   if g6 == True:
     chord_templates = np.vstack((chord_templates, g6_template))
     chord_labels = chord_labels + [c + "6" for c in chroma_labels]
@@ -64,8 +65,6 @@ def create_chord_mask(maj7=False, g6=False):
 
       # add to events
       chord_mask = np.vstack((chord_mask, np.roll(chord_template, c)))
-
-
 
   return chord_mask, chroma_labels, chord_labels
 
@@ -96,7 +95,6 @@ def HPCP(C, n_octaves, bins_per_octave=12):
   Harmonic Pitch Class Profile calculated from cqt C
   """
   return np.sum(np.abs(buffer2D(C, bins_per_octave)), axis=0)
-
 
 
 def half_wave_rect(x):
@@ -204,9 +202,10 @@ def allpass_coeffs(lam):
   return b, a
 
 
-# --
-# Midi events
 def get_midi_events(file_name):
+  """
+  midi envents reader from file
+  """
 
   import mido
 
@@ -246,9 +245,10 @@ def f2midi(f):
   return np.round(12 * np.log(f / 440) / np.log(2) + 69)
 
 
-# --
-# ACF
 def acf(x):
+  """
+  simple auto correlation function, but slowly
+  """
 
   # length of signal
   N = len(x)
@@ -285,17 +285,12 @@ def score_onset_detection(onsets, labels, tolerance=0.02, time_interval=()):
     (P, R, F) - (Precision, Recall, F-Measure)
   """
 
-  #print("onsets: ", onsets)
-  #print("labels: ", labels)
-  
+  # get all onsets in between time interval
   if time_interval:
     onsets = onsets[onsets > time_interval[0]]
     onsets = onsets[onsets < time_interval[1]]
     labels = labels[labels > time_interval[0]]
     labels = labels[labels < time_interval[1]]
-
-  #print("onsets: ", onsets)
-  #print("labels: ", labels)
 
   # totals:
   total_onsets = len(onsets)
@@ -344,9 +339,6 @@ def score_onset_detection(onsets, labels, tolerance=0.02, time_interval=()):
   return (P, R, F)
 
   
-  
-# --
-# thresholding
 def thresholding_onset(x, thresh):
   """
   thresholding for onset events
@@ -364,12 +356,9 @@ def thresholding_onset(x, thresh):
   # get only single onset -> attention edge problems
   onset = onset - np.logical_and(onset, np.roll(onset, 1))
 
-
   return onset
 
 
-# --
-# adaptive threshold
 def adaptive_threshold(g, H=10, alpha=0.05, beta=1):
   """
   adaptive threshold with sliding window
@@ -399,8 +388,6 @@ def adaptive_threshold(g, H=10, alpha=0.05, beta=1):
   return thresh
 
 
-# -- 
-# phase deviation
 def complex_domain_onset(X, N):
   """
   complex domain approach for onset detection
@@ -430,8 +417,6 @@ def complex_domain_onset(X, N):
   return eta
 
 
-# -- 
-# phase deviation
 def phase_deviation(X, N):
   """
   phase_deviation of STFT
@@ -464,9 +449,10 @@ def phase_deviation(X, N):
   return d
 
 
-# -- 
-# Amplitude diff
 def amplitude_diff(X, N):
+  """
+  calculate amplitude differences from consecutive frames
+  """
 
   # absolute amplitude
   X = np.abs(X[:, 0:N//2])
@@ -480,9 +466,10 @@ def amplitude_diff(X, N):
   return d
 
 
-# --
-# dct
 def dct(X, N):
+  """
+  discrete cosine transform
+  """
   
   # transformation matrix
   H = np.cos(np.pi / N * np.outer((np.arange(N) + 0.5), np.arange(N)))
@@ -491,16 +478,13 @@ def dct(X, N):
   return np.dot(X, H)
 
 
-# --
-# triangle
 def triangle(M, N):
-
-  # create triangle
+  """
+  create a triangle
+  """
   return np.concatenate((np.linspace(0, 1, M), np.linspace(1 - 1 / N, 0, N - 1)))
 
 
-# --
-# mel band weights
 def mel_band_weights(M, fs, N=1024, ol_rate=0.5):
   """
   mel_band_weights create a weight matrix of triangluar mel band weights for a filter bank.
@@ -547,14 +531,15 @@ def mel_band_weights(M, fs, N=1024, ol_rate=0.5):
   return (w_f, w_mel, n_bands)
 
 
-# --
-# compute cepstrum
 def cepstrum(X, N):
+  """
+  cepstrum
+  """
 
   # transformation matrix
   H = np.exp(1j * 2 * np.pi / N * np.outer(np.arange(N), np.arange(N)))
 
-  # transfored signal
+  # transformed signal
   Ex = np.log( np.power( np.abs(np.dot(X, H)), 2) )
 
   cep = np.power( np.abs( np.dot(Ex, H) / N ), 2 )
@@ -562,27 +547,31 @@ def cepstrum(X, N):
   return cep
 
 
-# --
-# mel to frequency
 def mel_to_f(m):
+  """
+  mel to frequency
+  """
   return 700 * (np.power(10, m / 2595) - 1)
 
 
-# --
-# frequency to mel
 def f_to_mel(f):
+  """
+  frequency to mel 
+  """
   return 2595 * np.log10(1 + f / 700)
 
 
-# --
-# principle argument
 def princarg(p):
+  """
+  principle argument
+  """
   return np.mod(p + np.pi, -2 * np.pi) + np.pi
 
 
-# --
-# parabolic interpolation
 def parabol_interp(X, p):
+  """
+  parabolic interpolation
+  """
 
   # gama
   gamma = 0.5 * (X[p-1] - X[p+1]) / (X[p-1] - 2 * X[p] + X[p+1]);
@@ -597,9 +586,10 @@ def parabol_interp(X, p):
   return (alpha, beta, gamma, k)
 
 
-# --
-# instantaneous frequency
 def inst_f(X, frame, p, R, N, fs):
+  """
+  instantaneous frequency
+  """
 
   # calculate phases of the peaks between two frames
   phi1 = np.angle(X)[frame][p]
@@ -611,9 +601,10 @@ def inst_f(X, frame, p, R, N, fs):
   return delta_phi / (2 * np.pi * R) * fs
 
 
-# --
-# buffer equivalent
 def buffer(X, n, ol=0):
+  """
+  buffer function like in matlab
+  """
 
   # number of samples in window
   n = int(n)
@@ -649,9 +640,10 @@ def buffer(X, n, ol=0):
   return windows
 
 
-# --
-# buffer equivalent
 def buffer2D(X, n, ol=0):
+  """
+  buffer function like in matlab but with 2D
+  """
 
   # number of samples in window
   n = int(n)
@@ -687,15 +679,17 @@ def buffer2D(X, n, ol=0):
   return windows
 
 
-# --
-# short term energy
 def st_energy(x, w):
+  """
+  short term energy
+  """
   return np.sum( np.multiply(np.power(x, 2), w), 1) / x.shape[1]
 
 
-# --
-# zero crossing rate
 def zero_crossing_rate(X, w):
+  """
+  zero crossing rate
+  """
 
   # first sample
   a = np.sign(X)
