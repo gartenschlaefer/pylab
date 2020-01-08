@@ -4,6 +4,8 @@
 import numpy as np
 from scipy import signal
 
+import matplotlib.pyplot as plt
+
 # librosa
 import librosa
 
@@ -489,6 +491,27 @@ def amplitude_diff(X, N):
   return d
 
 
+def calc_mfcc(x, fs, N=1024, hop=512, n_filter_bands=8):
+  """
+  mel-frequency cepstral coefficient
+  """
+
+  # stft
+  X = stft(x, 2*N, hop)
+
+  # weights
+  w_f, w_mel, n_bands = mel_band_weights(n_filter_bands, fs, N)
+
+  # energy of fft
+  E = np.power(2 / N * np.abs(X[:, 0:N]), 2)
+
+  # sum the weighted energies
+  u = np.inner(E, w_f)
+
+  # discrete cosine transform of log
+  return dct(np.log(u), n_bands)
+
+
 def dct(X, N):
   """
   discrete cosine transform
@@ -508,26 +531,20 @@ def triangle(M, N):
   return np.concatenate((np.linspace(0, 1, M), np.linspace(1 - 1 / N, 0, N - 1)))
 
 
-def mel_band_weights(M, fs, N=1024, ol_rate=0.5):
+def mel_band_weights(n_bands, fs, N=1024, overlap=0.5):
   """
   mel_band_weights create a weight matrix of triangluar mel band weights for a filter bank.
   This is used to compute MFCC.
   """
-  M = int(M * ol_rate)
 
-  # overlapping stuff
-  ol = int(N // M * ol_rate)
-  hop = N // M - ol
-
-  # amount of bands
-  n_bands = N // hop
+  # hop of samples
+  hop = N / (n_bands + 1)
 
   # calculating middle point of triangle
-  mel_samples = np.linspace(hop - 1, N - N // n_bands - 1, n_bands - 1)
+  mel_samples = np.arange(hop, N, hop)
   f_samples = np.round(mel_to_f(mel_samples / N * f_to_mel(fs / 2)) * N / (fs / 2))
 
-  # add last one
-  f_samples = np.append(f_samples, N)
+  # round mel samples too
   mel_samples = np.round(mel_samples)
 
   # complicated hop sizes for frequency scale
@@ -541,7 +558,7 @@ def mel_band_weights(M, fs, N=1024, ol_rate=0.5):
   w_mel = np.zeros((n_bands, N))
   w_f = np.zeros((n_bands, N))
 
-  for mi in range(n_bands - 1):
+  for mi in range(n_bands):
 
     # for equidistant mel scale
     w_mel[mi][int(mel_samples[mi])] = 1
@@ -550,6 +567,13 @@ def mel_band_weights(M, fs, N=1024, ol_rate=0.5):
     # for frequency scale
     w_f[mi, int(f_samples[mi])] = 1
     w_f[mi] = np.convolve(w_f[mi], triangle(hop_f[mi]+1, hop_f[mi]+1), mode='same')
+
+  # print("w_f: ", f_samples.shape)
+  # print("w_f: ", w_f.shape)
+
+  # plt.figure(1)
+  # plt.plot(w_f.T)
+  # plt.show()
 
   return (w_f, w_mel, n_bands)
 
@@ -724,3 +748,22 @@ def zero_crossing_rate(X, w):
   b = np.sign(np.roll(X, -1))
 
   return np.around( np.sum( np.multiply( np.abs(a - b), w ), 1) / 2 )
+
+
+def stft(x, N=1024, hop=512):
+  """
+  short time fourier transform
+  """
+  # windowing
+  w = np.hanning(N)
+
+  # apply windows
+  x_buff = np.multiply(w, buffer(x, N, N-hop))
+
+  # transformation matrix
+  H = np.exp(1j * 2 * np.pi / N * np.outer(np.arange(N), np.arange(N)))
+
+  # transformed signal
+  return np.dot(x_buff, H)
+
+
