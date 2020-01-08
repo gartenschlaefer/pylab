@@ -12,6 +12,8 @@ import librosa.display
 from mia import *
 from get_annotations import get_annotations, get_annotations_text, plot_add_anno
 
+from get_annotations import plot_add_anno
+
 from scipy import signal
 from scipy.io import wavfile
 
@@ -41,6 +43,23 @@ def libroasa_comparance(x, fs):
 	plt.show()
 
 
+def plot_whole_chroma(C, fs, hop, fmin, bins_per_octave, annotation_file=[]):
+  """
+  plot whole song
+  """
+  plt.figure(1, figsize=(8, 4))
+  librosa.display.specshow(librosa.amplitude_to_db(C, ref=np.max), sr=fs, hop_length=hop, x_axis='time', y_axis='chroma', fmin=fmin, bins_per_octave=bins_per_octave)
+  plt.colorbar(format='%+2.0f dB')
+  #plt.title('Constant-Q power spectrum')
+
+  # add anno
+  if annotation_file:
+    plot_add_anno(annotation_file, text_height=10)
+
+  plt.tight_layout()
+  plt.show()
+
+
 # --
 # Main function
 if __name__ == '__main__':
@@ -50,6 +69,8 @@ if __name__ == '__main__':
 
   # audio file names
   file_names = ['imagine.mp3']
+
+  anno_file = 'imagine_anno.txt'
 
   # run through all files
   for file_name in file_names:
@@ -64,7 +85,7 @@ if __name__ == '__main__':
     fs = np.load('fs.npy')
 
     # debug -> faster
-    x = x[0:len(x)//2]
+    x = x[0:len(x)//4]
 
     # windowing params
     N = 1024
@@ -82,5 +103,20 @@ if __name__ == '__main__':
     #plt.show()
 
     #libroasa_comparance(x, fs)
+
+    # --
+    # chroma features
+
+    n_octaves = 4
+    bins_per_octave = 36
+    fmin = librosa.note_to_hz('C2')
+
+    chroma = calc_chroma(x, fs, hop, n_octaves, bins_per_octave, fmin)
+    plot_whole_chroma(chroma, fs, hop, fmin, bins_per_octave=12, annotation_file=anno_file)
+
+
+    # --
+    # mfcc features
+
 
 

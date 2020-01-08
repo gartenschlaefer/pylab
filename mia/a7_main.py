@@ -1,3 +1,6 @@
+# --
+# multi pitch detection
+
 import numpy as np
 import matplotlib.pyplot as plt
 import librosa
@@ -154,6 +157,7 @@ if __name__ == '__main__':
     onsets, m = get_onset_mat(file_dir + mat_file_name, var_name)
     print("onsets: ", onsets.shape)
 
+
     # --
     # snythesis of channels
 
@@ -247,9 +251,7 @@ if __name__ == '__main__':
     # plot wlpc
     #plot_wlpc(x_of[0, :], y_hat_rosa[0, :], y_hat_warp[0, :], fs)
 
-
     print("y_hat_warp: ", y_hat_warp.shape)
-
 
 
     # --
@@ -296,9 +298,6 @@ if __name__ == '__main__':
     y_corr = np.fft.ifft( np.power(np.abs(np.fft.fft(y_ch[0, :])), 2) + np.power(np.abs(np.fft.fft(y_ch[1, :])), 2))[:, 0:N_i//2]
 
     print("y_corr: ", y_corr.shape)
-
-
-
 
 
     # --
@@ -376,13 +375,8 @@ if __name__ == '__main__':
         # frequency estimate
         f_est[oni, :] = np.around(fs / peaks[oni, :], decimals=1)
 
-
     print('peaks: ', peaks[0, :])
     print('f_est: ', f_est[0, :])
-
-
-
-
 
 
     # plot

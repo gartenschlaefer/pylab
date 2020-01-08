@@ -1,0 +1,5 @@
+40.0 chorus1-start
+52.0 chorus1-end
+79.0 chorus2-start
+115.0 chorus2-end
+142.0 chorus3-start
