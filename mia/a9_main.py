@@ -17,6 +17,9 @@ from scipy.io import wavfile
 
 
 def test_cq():
+  """
+  Just for testing, from librosa docu
+  """
 
   # Plot one octave of filters in time and frequency
   basis, lengths = librosa.filters.constant_q(22050)
@@ -76,6 +79,9 @@ def plot_intro(hpcp, fs, hop, fmin, bins_per_octave):
 
 
 def plot_chord_mask(chord_mask, chroma_labels, chord_labels):
+  """
+  ploting a chord mask image
+  """
 
   fig, ax = plt.subplots(1,1)
 
@@ -99,7 +105,9 @@ def plot_chord_mask(chord_mask, chroma_labels, chord_labels):
 
 
 def plot_chord_spectrum(chord_est, frames, fs, chord_labels, annotation_file, xlim=(0, 13), step=False, text_height=22):
-
+  """
+  plotting a chord spectrum: chords over time
+  """
   # setup plot
   fig, ax = plt.subplots(1,1)
 
@@ -147,9 +155,7 @@ if __name__ == '__main__':
     x, fs = librosa.load(file_dir + file_name, sr=11025, mono=True)
 
     # windowing params
-
     hop = 512
-    ol = N - hop
 
     # print some signal stuff
     print("x: ", x.shape)
@@ -193,10 +199,6 @@ if __name__ == '__main__':
 
     # get tuning bin of max in hist
     tuning_center_bin = np.argmax(hist_hpcp)
-
-    print(hist_hpcp)
-    print(tuning_center_bin)
-
 
     # tuning
     tuned_hpcp = np.roll(hpcp, tuning_center_bin, axis=0)
@@ -252,8 +254,8 @@ if __name__ == '__main__':
 
 
     # plot chord spectrum intro
-    #plot_chord_spectrum(m_chord_est, onset_frames, fs, chord_labels, annotation_file, xlim=(0, 13), step=True, text_height=4*12-3)
-    plot_chord_spectrum(m_chord_est, onset_frames, fs, chord_labels, annotation_file=[], xlim=(0, 60), step=True, text_height=2*12-3)
+    plot_chord_spectrum(m_chord_est, onset_frames, fs, chord_labels, annotation_file, xlim=(0, 13), step=True, text_height=2*12-2)
+    #plot_chord_spectrum(m_chord_est, onset_frames, fs, chord_labels, annotation_file=[], xlim=(0, 60), step=True, text_height=2*12-3)
 
 
 
