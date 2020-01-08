@@ -4,6 +4,29 @@
 import numpy as np
 from scipy import signal
 
+# librosa
+import librosa
+
+
+def calc_chroma(x, fs, hop=512, n_octaves=5, bins_per_octave=36, fmin=65.40639132514966):
+  """
+  calculate chroma values with constant q-transfrom and tuning of the HPCP
+  """
+
+  # ctq
+  C = np.abs(librosa.core.cqt(x, sr=fs, hop_length=hop, fmin=fmin, n_bins=bins_per_octave * n_octaves, bins_per_octave=bins_per_octave, tuning=0.0, filter_scale=1, norm=1, sparsity=0.01, window='hann', scale=True, pad_mode='reflect', res_type=None))
+
+  # calculate HPCP
+  hpcp = HPCP(C, n_octaves, bins_per_octave=bins_per_octave)
+
+  # make a histogram of tuning bins
+  hist_hpcp = histogram_HPCP(hpcp, bins_per_octave)
+
+  # tuning
+  tuned_hpcp = np.roll(hpcp, np.argmax(hist_hpcp), axis=0)
+
+  return filter_HPCP_to_Chroma(tuned_hpcp, bins_per_octave, filter_type='median')
+
 
 def chroma_median_filter(chroma, frames):
   """
