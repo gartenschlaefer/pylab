@@ -244,7 +244,7 @@ if __name__ == '__main__':
     onset_frames = librosa.onset.onset_detect(x, sr=fs)
 
     # chroma meadian filter between onsets
-    m_chroma = chroma_median_filter(chroma, onset_frames)
+    m_chroma = frame_filter(chroma, onset_frames)
 
     # measure with chord mask
     m_chord_measure = np.dot(chord_mask, m_chroma)

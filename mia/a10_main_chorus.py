@@ -44,12 +44,12 @@ def libroasa_comparance(x, fs):
 	plt.show()
 
 
-def plot_whole_chroma(C, fs, hop, fmin, bins_per_octave, annotation_file=[]):
+def plot_whole_chroma(C, fs, hop, fmin, bins_per_octave, annotation_file=[], x_axis='time'):
   """
   plot whole song
   """
-  plt.figure(1, figsize=(8, 4))
-  librosa.display.specshow(librosa.amplitude_to_db(C, ref=np.max), sr=fs, hop_length=hop, x_axis='time', y_axis='chroma', fmin=fmin, bins_per_octave=bins_per_octave)
+  plt.figure(2, figsize=(8, 4))
+  librosa.display.specshow(librosa.amplitude_to_db(C, ref=np.max), sr=fs, hop_length=hop, x_axis=x_axis, y_axis='chroma', fmin=fmin, bins_per_octave=bins_per_octave)
   plt.colorbar(format='%+2.0f dB')
   #plt.title('Constant-Q power spectrum')
 
@@ -61,18 +61,24 @@ def plot_whole_chroma(C, fs, hop, fmin, bins_per_octave, annotation_file=[]):
   plt.show()
 
 
-def plot_mfcc_spec(mfcc, fs, hop, annotation_file=[]):
+def plot_mfcc_spec(mfcc, fs, hop, annotation_file=[], x_axis='time'):
   """
   plot mfcc spectrum
   """
-  print("time: ", mfcc.shape[1] * hop / fs)
+  
+  if x_axis == 'time':
+    ext = [0, mfcc.shape[1] * hop / fs, mfcc.shape[0], 0] 
+
+  else:
+    #ext = [0, mfcc.shape[1], mfcc.shape[0], 0]
+    ext = None
 
   # for ploting issues
   if(mfcc.shape[0] > mfcc.shape[1]):
     mfcc = mfcc.T
 
-  plt.figure(1, figsize=(8, 4))
-  plt.imshow(mfcc, aspect='auto', vmin=-20, vmax=40, extent=[0, mfcc.shape[1] * hop / fs, mfcc.shape[0], 0])
+  plt.figure(3, figsize=(8, 4))
+  plt.imshow(mfcc, aspect='auto', vmin=-20, vmax=40, extent=ext)
   
   plt.ylabel('mfcc band')
   plt.xlabel('time [s]')
@@ -85,6 +91,18 @@ def plot_mfcc_spec(mfcc, fs, hop, annotation_file=[]):
   plt.tight_layout()
   plt.show()
 
+
+def plot_sdm(sdm, cmap='magma'):
+
+  plt.figure(4)
+  plt.imshow(sdm, aspect='auto', cmap=cmap)
+  
+  plt.ylabel('frames')
+  plt.xlabel('frames')
+  plt.colorbar()
+
+  plt.tight_layout()
+  plt.show()
 
 # --
 # Main function
@@ -111,7 +129,7 @@ if __name__ == '__main__':
     fs = np.load('fs.npy')
 
     # debug -> faster
-    x = x[0:len(x)]
+    #x = x[0:len(x)//10]
 
     # windowing params
     N = 1024
@@ -147,12 +165,51 @@ if __name__ == '__main__':
     mfcc = calc_mfcc(x, fs, N, hop, n_filter_bands=12)
 
     # for some nan and inf parts set to -60dB
-    mfcc[np.isnan(mfcc)] = -60
-    mfcc[np.isinf(mfcc)] = -60
+    mfcc[np.isnan(mfcc)] = float(-60)
+    mfcc[np.isinf(mfcc)] = float(-60)
 
     #mfcc = librosa.feature.mfcc(x, fs, S=None, n_mfcc=12, dct_type=2, norm='ortho', lifter=0)
     #print("mfcc: ", mfcc)
     #plot_mfcc_spec(mfcc, fs, hop, annotation_file=anno_file)
+
+
+    # --
+    # beat for synchronization
+
+    tempo, beats = librosa.beat.beat_track(x, sr=fs)
+
+    print("Tempo: ", tempo)
+    print("beats: ", beats.shape)
+    #print("beats: ", beats)
+
+
+    # -- 
+    # feature averaging over beats
+
+    chroma_feat = frame_filter(chroma, beats, filter_type='mean')
+    mfcc_feat = frame_filter(mfcc, beats, filter_type='mean')
+
+    print("chroma_feat: ", chroma_feat.shape)
+    print("mfcc_feat: ", mfcc_feat.shape)
+    #plot_mfcc_spec(mfcc_feat, fs, hop, annotation_file=[], x_axis='frames')
+    #plot_whole_chroma(chroma_feat, fs, hop, fmin, bins_per_octave=12, annotation_file=[], x_axis='frames')
+
+
+    # -- 
+    # self distance matrix (SDM) calculations
+
+    sdm_chroma = calc_sdm(chroma_feat)
+    sdm_mfcc = calc_sdm(mfcc_feat)
+
+    print("sdm chroma: ", sdm_chroma.shape)
+    #plot_sdm(sdm_chroma, cmap='magma')
+    #plot_sdm(sdm_mfcc, cmap='viridis')
+
+
+
+
+
+
 
 
 

@@ -10,6 +10,27 @@ import matplotlib.pyplot as plt
 import librosa
 
 
+def calc_sdm(feat_frames, distance_measure='euclidean'):
+  """
+  calculate the self-distance matrix from frame feature vectors
+  """
+
+  # init
+  M = feat_frames.shape[1]
+  sdm = np.zeros((M, M))
+
+  # run through each feature
+  for i, feat in enumerate(feat_frames.T):
+
+    # compare with each other feature frame
+    for j in range(M):
+      
+      # calculate distance
+      sdm[i, j] = np.linalg.norm(feat - feat_frames[:, j])
+
+  return sdm
+
+
 def calc_chroma(x, fs, hop=512, n_octaves=5, bins_per_octave=36, fmin=65.40639132514966):
   """
   calculate chroma values with constant q-transfrom and tuning of the HPCP
@@ -30,20 +51,33 @@ def calc_chroma(x, fs, hop=512, n_octaves=5, bins_per_octave=36, fmin=65.4063913
   return filter_HPCP_to_Chroma(tuned_hpcp, bins_per_octave, filter_type='median')
 
 
-def chroma_median_filter(chroma, frames):
+def frame_filter(feature, frames, filter_type='median'):
   """
-  Median filtering of the chroma values in between two consecutive frames
+  Filtering of two consecutive frames, median or mean filter
   """
+
   # init
-  m_chroma = np.zeros((chroma.shape[0], len(frames)))
+  m_feature = np.zeros((feature.shape[0], len(frames)))
 
   # for each frame
   for i, frame in enumerate(frames):
 
-    # median filter frames
-    m_chroma[:, i] = np.median(chroma[:, frame:frames[i]+1], axis=1)
+    # stopp filtering
+    if i == len(frames) - 1:
+      end_frame = -1
 
-  return m_chroma
+    else:
+      end_frame = frames[i+1]
+
+    # average filter
+    if filter_type == 'mean':
+      m_feature[:, i] = np.mean(feature[:, frame:end_frame], axis=1)
+
+    # median filter
+    else:
+      m_feature[:, i] = np.median(feature[:, frame:end_frame], axis=1)
+
+  return m_feature
 
 
 def create_chord_mask(maj7=False, g6=False):
@@ -509,7 +543,7 @@ def calc_mfcc(x, fs, N=1024, hop=512, n_filter_bands=8):
   u = np.inner(E, w_f)
 
   # discrete cosine transform of log
-  return dct(np.log(u), n_bands)
+  return dct(np.log(u), n_bands).T
 
 
 def dct(X, N):
