@@ -12,11 +12,6 @@ import librosa.display
 from mia import *
 from get_annotations import get_annotations, get_annotations_text, plot_add_anno
 
-from get_annotations import plot_add_anno
-
-from scipy import signal
-from scipy.io import wavfile
-
 
 def libroasa_comparance(x, fs):
 	"""
@@ -92,10 +87,11 @@ def plot_mfcc_spec(mfcc, fs, hop, annotation_file=[], x_axis='time'):
   plt.show()
 
 
-def plot_sdm(sdm, cmap='magma'):
+def plot_sdm(sdm, vmin=None, vmax=None, cmap='magma'):
 
   plt.figure(4)
-  plt.imshow(sdm, aspect='auto', cmap=cmap)
+  #plt.imshow(sdm, aspect='auto', cmap=cmap)
+  plt.imshow(sdm, aspect='auto', vmin=vmin, vmax=vmax, cmap=cmap)
   
   plt.ylabel('frames')
   plt.xlabel('frames')
@@ -202,8 +198,50 @@ if __name__ == '__main__':
     sdm_mfcc = calc_sdm(mfcc_feat)
 
     print("sdm chroma: ", sdm_chroma.shape)
-    #plot_sdm(sdm_chroma, cmap='magma')
+    #plot_sdm(sdm_chroma, vmin=np.min(sdm_chroma), vmax=np.max(sdm_chroma)/4, cmap='magma')
     #plot_sdm(sdm_mfcc, cmap='viridis')
+
+
+    # --
+    # enhancing and summing the SDMs
+
+    enh_sdm_chroma = chroma_sdm_enhancement(sdm_chroma)
+
+    #plot_sdm(enh_sdm_chroma, vmin=np.min(sdm_chroma), vmax=np.max(enh_sdm_chroma)/4, cmap='magma')
+    #plot_sdm(enh_sdm_chroma, cmap='magma')
+
+    # weighted summation
+    w_c = 1 / np.max(sdm_chroma)
+    w_m = 1 / np.max(sdm_mfcc)
+    #w_c = 1
+    #w_m = 1
+
+    sdm_all = w_c * sdm_chroma + w_m * sdm_mfcc
+    #plot_sdm(sdm_all, cmap='cividis')
+
+
+    # --
+    # detecting repetitions
+
+    # find important neighbouring diagonals
+
+    F = np.zeros(sdm_all.shape[0]) 
+
+    for m in range(sdm_all.shape[0]):
+
+      d = np.eye(sdm_all.shape[0], k=-m)
+      #print("d: ", d)
+
+      F[m] = np.mean(sdm_all * d)
+
+    print("F: ", F.shape)
+
+    # low pass filtering
+
+
+
+
+
 
 
 

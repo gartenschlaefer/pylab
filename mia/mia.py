@@ -9,6 +9,64 @@ import matplotlib.pyplot as plt
 # librosa
 import librosa
 
+# filtering
+from scipy.ndimage.filters import convolve
+
+
+def chroma_sdm_enhancement(sdm):
+  """
+  chroma enhancement with weird local mean filters proposed by Eronen
+  """
+
+  # enhanced sdm
+  enh_sdm = np.copy(sdm)
+
+  # copy for convolution
+  conv_sdm = np.copy(sdm)
+
+
+  # create mean kernels, k1 and k4 are diagonal ones -> important
+  k1 = np.array([[1, 0, 0, 0, 0], [0, 1, 0, 0, 0], [0, 0, 1, 0, 0], [0, 0, 0, 0, 0], [0, 0, 0, 0, 0]]) / 3
+  k2 = np.array([[0, 0, 1, 0, 0], [0, 0, 1, 0, 0], [0, 0, 1, 0, 0], [0, 0, 0, 0, 0], [0, 0, 0, 0, 0]]) / 3
+  k3 = np.array([[0, 0, 0, 0, 0], [0, 0, 0, 0, 0], [0, 0, 1, 1, 1], [0, 0, 0, 0, 0], [0, 0, 0, 0, 0]]) / 3
+  k4 = np.array([[0, 0, 0, 0, 0], [0, 0, 0, 0, 0], [0, 0, 1, 0, 0], [0, 0, 0, 1, 0], [0, 0, 0, 0, 1]]) / 3
+  k5 = np.array([[0, 0, 0, 0, 0], [0, 0, 0, 0, 0], [0, 0, 1, 0, 0], [0, 0, 1, 0, 0], [0, 0, 1, 0, 0]]) / 3
+  k6 = np.array([[0, 0, 0, 0, 0], [0, 0, 0, 0, 0], [1, 1, 1, 0, 0], [0, 0, 0, 0, 0], [0, 0, 0, 0, 0]]) / 3
+
+  kernels = np.array([k1, k2, k3, k4, k5, k6])
+
+  sdm_dir_mean = np.zeros((kernels.shape[0],) + sdm.shape)
+
+  print("sdm_dir: ", sdm_dir_mean.shape)
+
+  # calculate directional means
+  for i, k in enumerate(kernels):
+    sdm_dir_mean[i, :] = convolve(conv_sdm, k)
+
+  # do the weird stuff
+  for i in range(sdm.shape[0]):
+    for j in range(sdm.shape[1]):
+
+      # local mean values
+      dir_means = sdm_dir_mean[:, i, j]
+
+      # kernel with local min
+      k_local_min = np.argmin(dir_means)
+
+      # if diagonals are minimum local mean
+      if k_local_min == 0 or k_local_min == 3:
+
+        # add minimum local mean value
+        enh_sdm[i, j] += dir_means[k_local_min]
+
+      # else horizontal or vertical are minimum local mean
+      else:
+
+        # add largest local mean value
+        enh_sdm[i, j] += np.max(dir_means)
+
+  return enh_sdm
+
 
 def calc_sdm(feat_frames, distance_measure='euclidean'):
   """
