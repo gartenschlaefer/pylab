@@ -13,6 +13,18 @@ import librosa
 from scipy.ndimage.filters import convolve
 
 
+def calc_pca(x):
+  """
+  calculate pca of signal, already ordered, n x m (samples x features)
+  """
+
+  # eigen stuff -> already sorted
+  eig_val, eig_vec = np.linalg.eig(np.cov(x, rowvar=False))
+
+  # pca transformation
+  return np.dot(x, eig_vec)
+
+
 def chroma_sdm_enhancement(sdm):
   """
   chroma enhancement with weird local mean filters proposed by Eronen
