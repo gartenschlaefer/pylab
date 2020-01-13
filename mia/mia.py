@@ -13,6 +13,142 @@ import librosa
 from scipy.ndimage.filters import convolve
 
 
+def lda_classifier(x, y, method='class_dependent', n_lda_dim=1):
+  """
+  compute lda classifier
+  """
+
+  # n samples, m features
+  n, m = x.shape
+
+  # amount of classes
+  labels = np.unique(y)
+  n_classes = len(labels)
+
+  # averall mean
+  mu = np.mean(x, axis=0)
+
+  print("mu: ", mu.shape)
+
+  # class occurence probability
+  p_k = np.zeros(n_classes)
+  mu_k = np.zeros((n_classes, m))
+  cov_k = np.zeros((n_classes, m, m))
+
+  label_list = []
+
+  # calculate mean class occurence and mean vector
+  for k, label in enumerate(labels):
+
+    # append label
+    label_list.append(label)
+
+    # get class samples
+    class_samples = x[y==label, :]
+
+    # class ocurrence probability
+    p_k[k] = len(class_samples) / n
+
+    # mean vector of classes
+    mu_k[k] = np.mean(class_samples, axis=0)
+
+    # covariance vector of classes
+    cov_k[k] = np.cov(class_samples, rowvar=False)
+
+  # calculate between class scatter matrix -> S_b
+  S_b = p_k * (mu_k - mu).T @ (mu_k - mu)
+
+  # copy covarianc matrix
+  cov_copy = np.copy(cov_k)
+
+  for i in range(len(p_k)):
+    cov_copy[i] *= p_k[i]
+
+  # calculate within class scatter matrix -> S_w
+  S_w = np.sum(cov_copy, axis=0)
+
+
+  # class dependent use covariance
+  if method == 'class_dependent':
+
+    # init
+    w = np.zeros((n_classes, m, n_lda_dim))
+    bias = np.zeros(n_classes)
+    x_h = np.zeros((n, n_lda_dim))
+
+    # run through all classes
+    for k in range(n_classes):
+
+      # compute eigenvector
+      eig_val, eig_vec = np.linalg.eig(np.linalg.inv(cov_k[k]) @  S_b)
+
+      # use first eigenvector
+      w[k] = eig_vec[:, 0:n_lda_dim].real
+
+      # transformierte daten
+      x_h[y==label_list[k]] = (w[k].T @ x[y==label_list[k]].T).T
+
+      # bias
+      bias[k] = np.mean(x_h[y==label_list[k]])
+
+
+
+  # not class dependent use S_w, TODO:
+  else:
+
+    # compute eigenvector
+    eig_val, eig_vec = np.linalg.eig(np.linalg.inv(S_w) @  S_b)
+    
+    # first row eigenvector from eigenvalue 0
+    w = eig_vec[:, 0].real
+
+    # bias
+    #bias = w.T @ mu
+
+  return w, bias, x_h, label_list
+
+
+
+
+def calc_fisher_ration(x, y):
+  """
+  calculate the fisher ration of each feature and each class
+  """
+
+  # n samples, m features
+  n, m = x.shape
+
+  # amount of classes
+  labels = np.unique(y)
+  n_classes = len(labels)
+
+  # compare labels
+  compare_label = []
+
+  # get all labels to compare
+  for i in range(n_classes - 1):
+    for i_s in range(i + 1, n_classes):
+      compare_label.append(labels[i] + ' - ' + labels[i_s])
+
+  # init ratio
+  r = np.zeros((m, len(compare_label)))
+
+  # all features
+  for j in range(m):
+
+    c = 0
+
+    # all class compares
+    for i in range(n_classes - 1):
+
+      for i_s in range(i + 1, n_classes):
+
+        r[j, c] = (np.mean(x[y==labels[i], j]) - np.mean(x[y==labels[i_s], j]))**2 / (np.var(x[y==labels[i], j]) + np.var(x[y==labels[i_s], j]) )
+        c += 1
+  
+  return r, compare_label
+
+
 def calc_pca(x):
   """
   calculate pca of signal, already ordered, n x m (samples x features)
