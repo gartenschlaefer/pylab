@@ -49,6 +49,9 @@ def get_phonemlabels(file):
     for idx in range(1, 3):
       phonem_data[idx] = file.readline().rstrip()
     
+    # remove '
+    phonem_data[2] = phonem_data[2].split("'")[1]
+
     # stack the phonems together
     phonem_list = np.vstack((phonem_list, phonem_data))
 

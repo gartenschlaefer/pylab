@@ -8,6 +8,9 @@ import matplotlib.pyplot as plt
 import librosa
 import librosa.display
 
+# filter stuff
+from scipy import signal
+
 # my personal mia lib
 from mia import *
 from get_annotations import get_annotations, get_annotations_text, plot_add_anno
@@ -235,11 +238,22 @@ if __name__ == '__main__':
       F[m] = np.mean(sdm_all * d)
 
     print("F: ", F.shape)
+    print("F: ", F)
+
+    # moving average filter
+    F_h = F - np.convolve(F, np.ones(50) / 50, mode='same')
+
+    print("Fh: ", F_h.shape)
+    print("Fh: ", F_h)
 
     # low pass filtering
+    b = np.array([1, 0, -1])
+    a = 1
+    
+    F_t = signal.lfilter(b, a, F_h)
 
-
-
+    print("F_t: ", F_t.shape)
+    print("F_t: ", F_t)
 
 
 

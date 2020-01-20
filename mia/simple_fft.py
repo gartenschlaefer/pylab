@@ -41,6 +41,14 @@ if __name__ == '__main__':
 
   print('inverse fft is equal: ', np.allclose(x, xi))
 
+  # --
+  # print fourier transformed signal
+
+  plt.figure()
+  plt.plot(Y)
+  plt.plot(1 / N * np.abs(np.fft.fft(x)))
+  plt.show()
+
 
 
   # --

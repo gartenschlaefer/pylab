@@ -11,6 +11,54 @@ import librosa
 
 # filtering
 from scipy.ndimage.filters import convolve
+from scipy import signal
+
+
+def q_first_formant(x, w, fs, f_roi=[300, 1000]):
+  """
+  calculates the q value of the fist formant
+  """
+
+  # fft
+  X = np.fft.fft(x * w, n=2048)
+
+  # sample len
+  N = len(X)
+
+  # Amplitude
+  Y = 2 / N * np.abs(X[0:N//2])
+
+  # sample roi
+  s_roi = ((N / 2) / (fs / 2) * np.array(f_roi)).astype(int)
+
+  # max height
+  h_max = max(Y[s_roi[0] : s_roi[1]])
+
+  # find peak
+  p, v = signal.find_peaks(Y[s_roi[0] : s_roi[1]], height=(0.3 * h_max, h_max))
+
+  f = np.linspace(0, fs/2, N//2)
+
+  
+  if not len(p) == 0:
+    #print(p)
+    p = p + s_roi[0]
+
+  else:
+    p = np.append(p, s_roi[0]+1)
+    print("append: ", p)
+
+  # get first peak
+  # plt.figure()
+  # plt.plot(f, Y)
+
+  #  plt.scatter(p[0] * (fs / 2) / (N / 2), Y[p[0]])
+
+  # plt.xlim(f_roi)
+  # plt.show()
+
+  return Y[p[0]]
+
 
 
 def lda_classifier(x, y, method='class_dependent', n_lda_dim=1):
@@ -966,6 +1014,13 @@ def buffer2D(X, n, ol=0):
   return windows
 
 
+def calc_rms(x, w):
+  """
+  rms value with window
+  """
+  return np.sqrt(np.mean(x**2 * w))
+
+
 def st_energy(x, w):
   """
   short term energy
@@ -973,21 +1028,21 @@ def st_energy(x, w):
   return np.sum( np.multiply(np.power(x, 2), w), 1) / x.shape[1]
 
 
-def zero_crossing_rate(X, w):
+def zero_crossing_rate(x, w, axis=1):
   """
   zero crossing rate
   """
 
   # first sample
-  a = np.sign(X)
+  a = np.sign(x)
 
   # zero handling
   a[a==0] = 1
 
   # second sample
-  b = np.sign(np.roll(X, -1))
+  b = np.sign(np.roll(x, -1))
 
-  return np.around( np.sum( np.multiply( np.abs(a - b), w ), 1) / 2 )
+  return np.around( np.sum( np.multiply( np.abs(a - b), w ), axis=axis) / 2 )
 
 
 def stft(x, N=1024, hop=512):
