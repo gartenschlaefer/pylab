@@ -14,6 +14,22 @@ from scipy.ndimage.filters import convolve
 from scipy import signal
 
 
+def calc_accuracy(y_pred, y_true):
+  """
+  calculates accuracy
+  """
+
+  # amount of labels
+  N = len(y_true)
+
+  # check predictions
+  correct_pred = np.sum(y_pred == y_true)
+  false_pred = N - correct_pred
+  acc = correct_pred / N
+
+  return acc, correct_pred, false_pred
+
+
 def q_first_formant(x, w, fs, f_roi=[300, 1000]):
   """
   calculates the q value of the fist formant
@@ -46,7 +62,7 @@ def q_first_formant(x, w, fs, f_roi=[300, 1000]):
 
   else:
     p = np.append(p, s_roi[0]+1)
-    print("append: ", p)
+    #print("append: ", p)
 
   # get first peak
   # plt.figure()
@@ -207,6 +223,53 @@ def calc_pca(x):
 
   # pca transformation
   return np.dot(x, eig_vec)
+
+
+def get_sdm_threshold(sdm):
+  """
+  compute the sdm threshold for binarized sdms
+  """
+  
+  # lib for otsu threshold
+  from skimage import filters
+
+  F = np.zeros(sdm.shape[0]-1) 
+
+  # run through all diagonals except main diagonal which is zero
+  for m in range(1, sdm.shape[0]):
+
+    # mean of diagonal
+    F[m-1] = np.mean(sdm * np.eye(sdm.shape[0], k=-m))
+
+  # moving average filter
+  F_h = F - np.convolve(F, np.ones(50) / 50, mode='same')
+
+  # low pass filtering
+  F_t = signal.lfilter(np.array([1, 0, -1]), 1, F_h)
+
+  # get good diagonals with otsu threshold
+  y_diagonals = F_t < filters.threshold_otsu(F_t)
+
+  # concatenate diagonals
+  g_conc = np.array([])
+
+  # go through all diagonals
+  for m, y in enumerate(y_diagonals):
+
+    # choose best diagonals
+    if y:
+
+      # get diagonal
+      g_y = np.ravel(sdm * np.eye(sdm.shape[0], k=-m-1))
+
+      # smooth diagonal with moving average with 4
+      g_y_smooth = np.convolve(g_y[g_y!=0], np.ones(4) / 4, mode='same')
+
+      # concatenate smoothed diagonals
+      g_conc = np.concatenate((g_conc, g_y_smooth))
+
+  # get sdm tresh with 20% of smaller values under it
+  return np.sort(g_conc)[len(g_conc)//5]
 
 
 def chroma_sdm_enhancement(sdm):

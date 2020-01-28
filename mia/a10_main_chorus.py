@@ -129,6 +129,7 @@ if __name__ == '__main__':
 
     # debug -> faster
     #x = x[0:len(x)//10]
+    #x = x[0:len(x)//4]
 
     # windowing params
     N = 1024
@@ -224,36 +225,24 @@ if __name__ == '__main__':
 
 
     # --
-    # detecting repetitions
+    # compute binarized sdm
 
-    # find important neighbouring diagonals
+    # get threshold
+    sdm_thresh = get_sdm_threshold(sdm_all)
+    print("sdm thresh: ", sdm_thresh)
 
-    F = np.zeros(sdm_all.shape[0]) 
+    # thresholding -> binarized sdm
+    bin_sdm = np.copy(sdm_all)
+    bin_sdm[bin_sdm>sdm_thresh] = 1
+    bin_sdm[bin_sdm<sdm_thresh] = 0
 
-    for m in range(sdm_all.shape[0]):
+    plot_sdm(bin_sdm, cmap='gray_r')
 
-      d = np.eye(sdm_all.shape[0], k=-m)
-      #print("d: ", d)
 
-      F[m] = np.mean(sdm_all * d)
 
-    print("F: ", F.shape)
-    print("F: ", F)
 
-    # moving average filter
-    F_h = F - np.convolve(F, np.ones(50) / 50, mode='same')
 
-    print("Fh: ", F_h.shape)
-    print("Fh: ", F_h)
 
-    # low pass filtering
-    b = np.array([1, 0, -1])
-    a = 1
-    
-    F_t = signal.lfilter(b, a, F_h)
-
-    print("F_t: ", F_t.shape)
-    print("F_t: ", F_t)
 
 
 
