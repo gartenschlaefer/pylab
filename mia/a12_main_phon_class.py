@@ -19,6 +19,9 @@ from sklearn import neighbors
 from mia import *
 from get_phonemlabels import get_phonemlabels
 
+# 3d plot
+from mpl_toolkits.mplot3d import Axes3D
+
 
 def gmm(x, y):
   """
@@ -29,16 +32,23 @@ def gmm(x, y):
   clf = GaussianMixture(n_components=3, covariance_type='full', tol=0.001, reg_covar=1e-06, max_iter=200, n_init=1, init_params='kmeans', weights_init=None, means_init=None, precisions_init=None, random_state=None, warm_start=False, verbose=0, verbose_interval=10)
 
   # fit
+  #clf.fit_predict(x, y)
   clf.fit(x, y)
 
   # predict
   y_hat = clf.predict(x)
 
+  #print("y_hat: ", y_hat)
+
   # label encoder
   le = preprocessing.LabelEncoder()
   le.fit(y)
+  
 
-  return le.inverse_transform(y_hat)
+  y_h = le.inverse_transform(y_hat)
+  #print("y_h: ", y_h)
+
+  return y_h
 
 
 def knn(x, y, n_neighbors=15):
@@ -147,6 +157,52 @@ def plot_features(zcr, rms, qff, labels):
   plt.grid()
   plt.show()
 
+  # 3D plot
+  # shape of things
+
+  # plot
+  fig = plt.figure()
+  ax = fig.add_subplot(111, projection='3d')
+  
+  #ax.scatter(zcr, rms, qff)
+
+  ax.scatter(zcr[labels=='P'], rms[labels=='P'], qff[labels=='P'], label='P')
+  ax.scatter(zcr[labels=='C'], rms[labels=='C'], qff[labels=='C'], label='C')
+  ax.scatter(zcr[labels=='V'], rms[labels=='V'], qff[labels=='V'], label='V')
+
+  #plt.colorbar()
+  plt.tight_layout()
+  plt.show()
+
+
+def plot_pca(x_pca, labels):
+  """
+  plot pca in 2d and 3d
+  """
+  # 2d
+  plt.figure(1)
+
+  plt.scatter(x_pca[labels=='P', 0], x_pca[labels=='P', 1], label='P')
+  plt.scatter(x_pca[labels=='C', 0], x_pca[labels=='C', 1], label='C')
+  plt.scatter(x_pca[labels=='V', 0], x_pca[labels=='V', 1], label='V')
+
+  plt.grid()
+  plt.legend()
+  plt.tight_layout()
+
+  # 3d
+  fig = plt.figure(2)
+  ax = fig.add_subplot(111, projection='3d')
+
+  ax.scatter(x_pca[labels=='P', 0], x_pca[labels=='P', 1], x_pca[labels=='P', 2], label='P')
+  ax.scatter(x_pca[labels=='C', 0], x_pca[labels=='C', 1], x_pca[labels=='C', 2], label='C')
+  ax.scatter(x_pca[labels=='V', 0], x_pca[labels=='V', 1], x_pca[labels=='V', 2], label='V')
+
+  plt.legend()
+  plt.tight_layout()
+
+  plt.show()
+
 
 # --
 # Main function
@@ -224,7 +280,7 @@ if __name__ == '__main__':
       rms[i] = calc_rms(x_i, w)
 
       # first formant
-      #qff[i] = q_first_formant(x_i, w, fs, f_roi=[300, 1000])
+      qff[i] = q_first_formant(x_i, w, fs, f_roi=[300, 1000])
 
     # plot features
     #plot_features(zcr, rms, qff, labels)
@@ -237,7 +293,14 @@ if __name__ == '__main__':
 
 
     # feature set [samples x features]
-    x_data = np.array([zcr, rms]).T
+    #x_data = np.array([zcr, rms]).T
+    x_data = np.array([zcr, rms, qff]).T
+
+    # pca data
+    x_pca = calc_pca(x_data)
+
+    #plot_pca(x_pca, labels)
+
     print("x_data: ", x_data.shape)
 
     # trainings data
@@ -245,6 +308,8 @@ if __name__ == '__main__':
     #y_train = labels[0:100]
 
     x_train = x_data
+    #x_train = x_pca
+    
     y_train = labels
     print("Amount of features in train P: {}, C: {}, V: {}".format(np.sum(y_train=='P'), np.sum(y_train=='C'), np.sum(y_train=='V')))
 
@@ -262,7 +327,12 @@ if __name__ == '__main__':
     acc_knn, cp, fp = calc_accuracy(y_train_knn_pred, y_train)
     acc_gmm, cp, fp = calc_accuracy(y_train_gmm_pred, y_train)
 
-    print("\n-----Accuracy\n KNN: [{}], GMM: [{}]".format(acc_knn, acc_gmm))
+    print("\n-----Accuracy\n KNN: [{:.4f}], GMM: [{:.4f}]".format(acc_knn, acc_gmm))
+
+    cm_knn = confusion_matrix(y_train, y_train_knn_pred)
+    cm_gmm = confusion_matrix(y_train, y_train_gmm_pred)
+    print("confusion matrix knn:\n", cm_knn)
+    print("confusion matrix gmm:\n", cm_gmm)
 
 
 

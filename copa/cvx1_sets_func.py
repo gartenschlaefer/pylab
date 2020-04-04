@@ -36,7 +36,7 @@ def main():
   # discrete points in a mesh
   x1, x2 = np.meshgrid(np.linspace(-1, 1, 100), np.linspace(-1, 1, 100))
 
-  x_conv = x1**2 + x2**2 - 1.0
+  x_conv = np.abs(x1) + np.abs(x2) - 1.0
 
   print("x1: ", x1.shape)
   #print("x1: ", x1)
@@ -50,12 +50,14 @@ def main():
 
   plt.figure()
 
-  plt.contour(x1, x2, x_conv, [0])
+  # plot convex hull
+  plt.contour(x1, x2, x_conv, [0], linewidths=3, label='|x|_1 <= 1')
+  #plt.contourf(x1, x2, x_conv, 2)
 
   # plot lines between the points
   for a, b in [(e1, -e1), (e2, -e2), (e1, e2), (e1, -e2), (-e1, e2), (-e1, -e2)]:
     x, y = line_between_points(a, b)
-    plt.plot(x, y, color='yellowgreen', linewidth=1.5)
+    plt.plot(x, y, color='yellowgreen', linewidth=1.5, linestyle='dashed')
 
   # plot points
   plt.scatter(e1[0], e1[1], label='e1')

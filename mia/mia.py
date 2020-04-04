@@ -32,7 +32,7 @@ def calc_accuracy(y_pred, y_true):
 
 def q_first_formant(x, w, fs, f_roi=[300, 1000]):
   """
-  calculates the q value of the fist formant
+  gets the peak value of the fist formant
   """
 
   # fft
@@ -64,11 +64,13 @@ def q_first_formant(x, w, fs, f_roi=[300, 1000]):
     p = np.append(p, s_roi[0]+1)
     #print("append: ", p)
 
-  # get first peak
+  # print("p=[{}] at Y[p]=[{}] ".format(p[0], Y[p[0]]))
+
+  # #get first peak
   # plt.figure()
   # plt.plot(f, Y)
 
-  #  plt.scatter(p[0] * (fs / 2) / (N / 2), Y[p[0]])
+  # plt.scatter(p[0] * (fs / 2) / (N / 2), Y[p[0]])
 
   # plt.xlim(f_roi)
   # plt.show()
@@ -283,7 +285,6 @@ def chroma_sdm_enhancement(sdm):
   # copy for convolution
   conv_sdm = np.copy(sdm)
 
-
   # create mean kernels, k1 and k4 are diagonal ones -> important
   k1 = np.array([[1, 0, 0, 0, 0], [0, 1, 0, 0, 0], [0, 0, 1, 0, 0], [0, 0, 0, 0, 0], [0, 0, 0, 0, 0]]) / 3
   k2 = np.array([[0, 0, 1, 0, 0], [0, 0, 1, 0, 0], [0, 0, 1, 0, 0], [0, 0, 0, 0, 0], [0, 0, 0, 0, 0]]) / 3
@@ -295,8 +296,6 @@ def chroma_sdm_enhancement(sdm):
   kernels = np.array([k1, k2, k3, k4, k5, k6])
 
   sdm_dir_mean = np.zeros((kernels.shape[0],) + sdm.shape)
-
-  print("sdm_dir: ", sdm_dir_mean.shape)
 
   # calculate directional means
   for i, k in enumerate(kernels):
@@ -370,7 +369,7 @@ def calc_chroma(x, fs, hop=512, n_octaves=5, bins_per_octave=36, fmin=65.4063913
 
 def frame_filter(feature, frames, filter_type='median'):
   """
-  Filtering of two consecutive frames, median or mean filter
+  Filtering of consecutive frames defined by frames, median or mean filter
   """
 
   # init
@@ -379,7 +378,7 @@ def frame_filter(feature, frames, filter_type='median'):
   # for each frame
   for i, frame in enumerate(frames):
 
-    # stopp filtering
+    # stop filtering
     if i == len(frames) - 1:
       end_frame = -1
 
@@ -646,8 +645,6 @@ def acf(x):
   return r
 
 
-# --
-# score for onset detection
 def score_onset_detection(onsets, labels, tolerance=0.02, time_interval=()):
   """
   score functions: Precision, Recall and F-measure
