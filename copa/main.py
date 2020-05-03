@@ -3,6 +3,34 @@ import scipy.sparse as sp
 
 import matplotlib.pyplot as plt
 
+
+def calc_energy(x, x_0, K, b, alpha):
+    """
+    calculate the energy of the minimization task
+    """
+
+    E = 0
+    r = np.zeros(K[0].shape[0])
+
+    for i in range(len(K)):
+        
+        # reconstruction filter
+        r += K[i] @ x[i]
+        print("K: ", K)
+
+    # reconstructed image
+    x_hat = x_0.ravel() + r
+
+    # error of reconstruction
+    x_e = x_hat - b.ravel()
+
+
+    for i in range(len(K)):
+
+        E +=  np.linalg.norm(x[i], ord=1) + 0.5 * (x_e.T @ x_e)
+
+    return E 
+
 # load the data
 data = np.load('./data-ass.npz')
 # compressed image
@@ -50,7 +78,7 @@ ax[1].imshow(x_hat, cmap='gray')
 ax[1].set_title(r'$\hat{x}$')
 ax[2].imshow(b, cmap='gray')
 ax[2].set_title(r'$b$')
-plt.show()
+#plt.show()
 
 # implement subgradient descent
 def subgradient_descent(x, x_0, K, b, alpha, max_iter):
@@ -73,9 +101,46 @@ def provided_algorithm(x, x_0, K, b, alpha, max_iter):
     sparsity = np.zeros((max_iter,), dtype=np.float32)
 
     x = x.copy()
+
+    # Lipschitz
+    L = 1
+
     # TODO:
+    print("shape of x: ", x.shape)
+    print("shape of K: ", K[0].shape)
+    print("shape of K: ", len(K))
+    print("shape of x0: ", x_0.shape)
+
+    # iterations
     for k in range(max_iter):
-        break
+
+        # reconstruction error
+        e = 0
+
+        # for each kernel
+        for i in range(len(K)):
+            
+            # summation of reconstruction error
+            e += K[i] @ x[i] - b
+
+        print("e: ", e.shape)
+
+        # for each kernel
+        for i in range(len(K)):
+
+            # x bar
+            x_bar = x[i] - 1 / L * K[i].T @ (x_0.ravel() + e)
+
+            # update x
+            x[i] = np.maximum( np.abs(x_bar) - alpha / L, np.zeros(x_bar.shape) ) * (np.sign(x_bar) + (x_bar == 0))
+
+
+        print("x_bar: ", x_bar.shape)
+
+        # calculate energy
+        energy = calc_energy(x, x_0, K, b, alpha)
+
+        print("energy: ", energy)
 
     return x, energy, ssd, sparsity
 
@@ -95,3 +160,6 @@ x_hat_p = x_0 + sum([(K[i] @ x_p[i]).reshape(x_0.shape) for i in range(N)])
 # TODO: 
 #   - plot the resulting reconstructions
 #   - loglog plot of the energy, SSD and sparsity
+
+# plot energy string
+print("sgd: energy={}, ssd: energy={}".format(energy_sgd, energy_p))
