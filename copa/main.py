@@ -28,6 +28,58 @@ def calc_energy(x, x_0, K, b, alpha):
     return E, x_hat
 
 
+def calc_sparsity(x, eps=1e-3):
+  """
+  calculate the sparsity of a matrix, return percentage value
+  """
+  return np.sum(np.abs(x) >= eps) / np.product(x.shape)
+
+
+def calc_alpha(x, perc=0.1):
+  """
+  calculate alpha so that 10% of x are non-zero
+  """
+
+  # init alpha
+  alpha = 1.0
+
+  # step size
+  s = 0.001
+
+  # stopping criterion
+  stop_criterion = False
+
+  while not stop_criterion:
+
+    # sparsity condition
+    x_s = alpha * x
+
+    # caclulate sparsity
+    S = calc_sparsity(x_s, eps=1e-3)
+
+    print("S: {} \t alpha: {}".format(S, alpha))
+
+    # stopping condition
+    if S <= perc:
+
+      stop_criterion = True
+      return alpha
+
+    # update alpha
+    alpha -= s 
+
+  return alpha
+
+
+def get_subgradient(x):
+    """
+    get the subgradient of the minimization function
+    """
+
+    # TODO: impelentation
+    return 1
+
+
 def subgradient_descent(x, x_0, K, b, alpha, max_iter):
     """
     subgradient descent algorithm
@@ -42,7 +94,26 @@ def subgradient_descent(x, x_0, K, b, alpha, max_iter):
 
     # TODO: implementation
     for k in range(max_iter):
-       break
+
+      # get subgradient
+      g = get_subgradient(x)
+
+      # select step size
+
+      t = 0.1
+
+      # Polyak
+      #t = f / np.linalg.norm(g,2)**2
+
+      # Dynamic
+      #t = 1/(np.linalg.norm(g,2)*np.sqrt(iter+1))
+
+      # update params
+      x = x - t * g
+
+      # calculate energy
+      energy[k], _ = calc_energy(x, x_0, K, b, alpha)
+
 
     return x, energy, ssd, sparsity
 
@@ -59,46 +130,49 @@ def provided_algorithm(x, x_0, K, b, alpha, max_iter):
 
     x = x.copy()
 
-    # Lipschitz constant
+    # Lipschitz constant (choose high enough)
     L = 10
 
     # get shapes
     n = len(b)
     n1, n2 = x_0.shape
-    k, m = x.shape
+    N, m = x.shape
 
     # print some infos:
     print("\n--provided algorithm--")
-    print("image: [n1 x n2] = [{} x {}], n=[{}], m=[{}], k=[{}]".format(n1, n2, n, m, k))
+    print("image: [n1 x n2] = [{} x {}], n=[{}], m=[{}], k=[{}]".format(n1, n2, n, m, N))
     print("params: iterations:{}, alpha=[{}], L=[{}]".format(max_iter, alpha, L))
 
     # shape of things
-    # b:    [n]         - image
+    # b:    [n]         - image (flattened): n = n1 * n2
     # x_0:  [n1 x n2]   - observation
-    # x:    [k x m]     - coeffs of kernel
-    # K:    [k x n x m] - conv img with kernel
+    # x:    [N x m]     - coeffs of kernel
+    # K:    [N x n x m] - conv img with kernel
 
     # iterations
-    for it in range(max_iter):
+    for k in range(max_iter):
 
-        # reconstruction error [n]
+        # reconstruction error: [n]
         x_e = reconstruct_img(x, x_0, K).ravel() - b
 
         # for each kernel
         for i in range(len(K)):
 
-            # x bar [m]
+            # x_bar: [m]
             x_bar = x[i] - 1 / L * K[i].T @ x_e
 
-            # update coeffs x [k x m]
+            # update coeffs x: [N x m]
             x[i] = np.maximum( np.abs(x_bar) - alpha / L, np.zeros(x_bar.shape) ) * (np.sign(x_bar) + (x_bar == 0))
 
         # calculate energy
-        energy[it], x_hat = calc_energy(x, x_0, K, b, alpha)
+        energy[k], x_hat = calc_energy(x, x_0, K, b, alpha)
+
+        # calculate sparsity
+        sparsity[k] = calc_sparsity(x, eps=1e-3)
 
         # print iteration
         #plot_compare_results(x_0, x_hat, b.reshape(n1, n2))
-        print("iteration: {} with energy=[{}] ".format(it, energy[it]))
+        print("iteration: {} with energy=[{}] ".format(k, energy[k]))
 
     return x, energy, ssd, sparsity
 
@@ -114,7 +188,7 @@ def plot_compare_results(x_0, x_hat, b):
   ax[1].set_title(r'$\hat{x}$')
   ax[2].imshow(b, cmap='gray')
   ax[2].set_title(r'$b$')
-  plt.show()
+  #plt.show()
 
 
 if __name__ == '__main__':
@@ -162,24 +236,23 @@ if __name__ == '__main__':
   x = x.reshape(N, -1)
 
   # compute the initial estimate
-  x_hat = reconstruct_img(x, x_0, K)
-  x_hat = x_0 + sum([(K[i] @ x[i]).reshape(x_0.shape) for i in range(N)])
+  x_hat_init = reconstruct_img(x, x_0, K)
 
-  # plot results
-  #plot_compare_results(x_0, x_hat, b)
-
+  # determine alpha
+  #alpha = calc_alpha(x)
+  #print("alpha: ", alpha)
 
   # TODO: choose properly
-  max_iter = 10
-  alpha = 0.1
+  max_iter = 5
+  alpha = 0.006
 
   # compute the reconstruction using subgradient descent
   x_sgd, energy_sgd, ssd_sgd, sparsity_sgd = subgradient_descent(x, x_0, K, b.ravel(), alpha, max_iter)
-  x_hat_sgd = x_0 + sum([(K[i] @ x_sgd[i]).reshape(x_0.shape) for i in range(N)])
+  x_hat_sgd = reconstruct_img(x_sgd, x_0, K)
 
   # compute the reconstruction using the provided algorithm
   x_p, energy_p, ssd_p, sparsity_p = provided_algorithm(x, x_0, K, b.ravel(), alpha, max_iter)
-  x_hat_p = x_0 + sum([(K[i] @ x_p[i]).reshape(x_0.shape) for i in range(N)])
+  x_hat_p = reconstruct_img(x_p, x_0, K)
 
   # plotting
   # TODO: 
@@ -187,10 +260,16 @@ if __name__ == '__main__':
   #   - loglog plot of the energy, SSD and sparsity
 
   # plot energy string
-  print("\nsgd: energy={}, \nssd: energy={}".format(energy_sgd, energy_p))
+  print("\nsgd:\t energy={}, sparsity={} \nprovided:\t energy={}, sparsity={}".format(energy_sgd, sparsity_sgd, energy_p, sparsity_p))
 
   # plot end results
+  plot_compare_results(x_0, x_hat_init, b)
+  plot_compare_results(x_0, x_hat_sgd, b)
   plot_compare_results(x_0, x_hat_p, b)
+
+  # plt.figure()
+  # plt.plot(sparsity_p)
+  # plt.show()
 
 
   plt.show()
