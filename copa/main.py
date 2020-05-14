@@ -222,6 +222,42 @@ def plot_compare_results(x_0, x_hat, b):
   #plt.show()
 
 
+def plot_metrics(energies, ssds, sparsities, labels):
+  """
+  plot the metrics
+  """
+
+  # energies
+  plt.figure()
+
+  for e, l in zip(energies, labels):
+    plt.plot(e, label=l)
+
+  plt.ylabel("Energy")
+  plt.xlabel("Iteration")
+  plt.legend()
+
+  # ssds
+  plt.figure()
+
+  for s, l in zip(ssds, labels):
+    plt.plot(s, label=l)
+
+  plt.ylabel("Sum of squared Distace")
+  plt.xlabel("Iteration")
+  plt.legend()
+
+  # sparsities
+  plt.figure()
+  
+  for s, l in zip(sparsities, labels):
+    plt.plot(s, label=l)
+
+  plt.ylabel("Sparsity in %")
+  plt.xlabel("Iteration")
+  plt.legend()
+
+
 if __name__ == '__main__':
   """
   main function
@@ -299,6 +335,9 @@ if __name__ == '__main__':
   #plot_compare_results(x_0, x_hat_init, b)
   #plot_compare_results(x_0, x_hat_sgd, b)
   #plot_compare_results(x_0, x_hat_p, b)
+
+  # plot metrics
+  plot_metrics([energy_sgd, energy_p], [ssd_sgd, ssd_p], [sparsity_sgd, sparsity_p], labels=['sgd', 'provided'])
 
   # plt.figure()
   # plt.plot(sparsity_p)
