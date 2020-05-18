@@ -73,13 +73,18 @@ def calc_alpha(x, perc=0.1):
   return alpha
 
 
-def get_subgradient(x):
+def get_subgradient(x, x_0, K, b, alpha):
     """
     get the subgradient of the minimization function
     """
 
-    # TODO: impelentation
-    return 1
+    # first subgradient
+    f1 = alpha * np.sign(x)
+
+    # second subgradient
+    f2 = 2 * (x_0.ravel() + K @ x - b.ravel()) @ K
+
+    return f1 + f2
 
 
 def subgradient_descent(x, x_0, K, b, alpha, max_iter):
@@ -94,27 +99,33 @@ def subgradient_descent(x, x_0, K, b, alpha, max_iter):
 
     x = x.copy()
 
+    # get shape of things
+    N, m = x.shape
+
     # print some infos:
     print("\n--subgradient descent algoritm")
 
     # TODO: implementation
     for k in range(max_iter):
 
-      # get subgradient
-      g = get_subgradient(x)
-
       # select step size
-
-      t = 0.1
+      t = 0.001
 
       # Polyak
       #t = f / np.linalg.norm(g,2)**2
 
       # Dynamic
       #t = 1/(np.linalg.norm(g,2)*np.sqrt(iter+1))
+      # get subgradient
 
-      # update params
-      x = x - t * g
+      # update params for each kernel
+      for i in range(N):
+
+        # get the subgradient
+        g = get_subgradient(x[i], x_0, K[i], b, alpha)
+
+        # update params
+        x[i] = x[i] - t * g
 
       # calculate reconstruction [n1 x n2]
       x_hat = reconstruct_img(x, x_0, K)
@@ -222,40 +233,69 @@ def plot_compare_results(x_0, x_hat, b):
   #plt.show()
 
 
-def plot_metrics(energies, ssds, sparsities, labels):
+def plot_end_result(x_0, x_init, x_sgd, x_p, b, metrics, labels_metrics, labels_algo):
+  """
+  plot the end result
+  """
+
+  # setup figure
+  fig = plt.figure(figsize=(12, 8))
+
+  # make a grid
+  n_rows, n_cols = 3, 7
+  gs = plt.GridSpec(n_rows, n_cols, wspace=0.4, hspace=0.3)
+
+  t_list = [r'$x_0$', r'$\hat{x}_{init}$', r'$\hat{x}_{sgd}$', r'$\hat{x}_{provided}$', r'$b$']
+  x_list = [x_0, x_init, x_sgd, x_p, b]
+  pos = [(0, 1), (1, 0), (1, 1), (1, 2), (2, 1)]
+
+  # plot images
+  for t, x, p in zip(t_list, x_list, pos):
+
+    # plot
+    ax = fig.add_subplot(gs[p])
+    ax.imshow(x, cmap='gray')
+    ax.set_yticks([])
+    ax.set_xticks([])
+    ax.set_title(t)
+
+  # plot metrics
+  for i, metric in enumerate(metrics):
+
+    # get axis
+    ax = fig.add_subplot(gs[i, 4:])
+
+    # plot all metric curves
+    for m, l in zip(metric, labels_algo):
+      ax.plot(m, label=l)
+
+    # set some labels
+    ax.set_ylabel(labels_metrics[i])
+    ax.legend()
+    ax.grid()
+
+
+def plot_metrics(metrics, labels_metrics, labels_algo):
   """
   plot the metrics
   """
 
-  # energies
-  plt.figure()
+  # init plot
+  fig, ax = plt.subplots(3, 1, sharex=True, figsize=(7, 9))
 
-  for e, l in zip(energies, labels):
-    plt.plot(e, label=l)
+  for i, metric in enumerate(metrics):
 
-  plt.ylabel("Energy")
-  plt.xlabel("Iteration")
-  plt.legend()
+    # plot all metric curves
+    for m, l in zip(metric, labels_algo):
+      ax[i].plot(m, label=l)
 
-  # ssds
-  plt.figure()
+    # set some labels
+    ax[i].set_ylabel(labels_metrics[i])
+    ax[i].legend()
+    ax[i].grid()
 
-  for s, l in zip(ssds, labels):
-    plt.plot(s, label=l)
-
-  plt.ylabel("Sum of squared Distace")
-  plt.xlabel("Iteration")
-  plt.legend()
-
-  # sparsities
-  plt.figure()
-  
-  for s, l in zip(sparsities, labels):
-    plt.plot(s, label=l)
-
-  plt.ylabel("Sparsity in %")
-  plt.xlabel("Iteration")
-  plt.legend()
+  # x label
+  ax[2].set_xlabel("Iteration")
 
 
 if __name__ == '__main__':
@@ -326,18 +366,27 @@ if __name__ == '__main__':
   #   - plot the resulting reconstructions
   #   - loglog plot of the energy, SSD and sparsity
 
+  # collect metrics
+  metrics = [[energy_sgd, energy_p], [ssd_sgd, ssd_p], [sparsity_sgd, sparsity_p]]
+  
+  # labels of metrics
+  labels_metrics, labels_algo = ['Energy', 'SSD', 'Sparsity'], ['sgd', 'provided']
+
   # plot energy string
   print("\n--End results:")
   print("sgd:\t energy=[{:.2f}], ssd=[{:.2f}] sparsity=[{:.4f}]".format(energy_sgd[-1], ssd_sgd[-1], sparsity_sgd[-1]))
   print("prov.:\t energy=[{:.2f}], ssd=[{:.2f}] sparsity=[{:.4f}]".format(energy_p[-1], ssd_p[-1], sparsity_p[-1]))
 
-  # plot end results
+  # compare images
   #plot_compare_results(x_0, x_hat_init, b)
   #plot_compare_results(x_0, x_hat_sgd, b)
   #plot_compare_results(x_0, x_hat_p, b)
 
   # plot metrics
-  plot_metrics([energy_sgd, energy_p], [ssd_sgd, ssd_p], [sparsity_sgd, sparsity_p], labels=['sgd', 'provided'])
+  #plot_metrics(metrics, labels_metrics, labels_algo)
+  
+  # plot end results
+  plot_end_result(x_0, x_hat_init, x_hat_sgd, x_hat_p, b, metrics, labels_metrics, labels_algo)
 
   # plt.figure()
   # plt.plot(sparsity_p)
