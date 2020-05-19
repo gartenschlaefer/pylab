@@ -73,7 +73,7 @@ def calc_alpha(x, perc=0.1):
   return alpha
 
 
-def get_subgradient(x, x_0, K, b, alpha):
+def get_subgradient(x, x_0, K, b, alpha, x_e):
     """
     get the subgradient of the minimization function
     """
@@ -82,14 +82,15 @@ def get_subgradient(x, x_0, K, b, alpha):
     f1 = alpha * np.sign(x)
 
     # second subgradient
-    f2 = 2 * (x_0.ravel() + K @ x - b.ravel()) @ K
+    f2 = 2 * (x_e) @ K
 
     return f1 + f2
 
 
-def subgradient_descent(x, x_0, K, b, alpha, max_iter):
+def subgradient_descent(x, x_0, K, b, alpha, max_iter, t=None):
     """
     subgradient descent algorithm
+    t is the step size, if None, the dynamic step size is used
     """
 
     # init
@@ -105,24 +106,21 @@ def subgradient_descent(x, x_0, K, b, alpha, max_iter):
     # print some infos:
     print("\n--subgradient descent algoritm")
 
-    # TODO: implementation
+    # over all iterations
     for k in range(max_iter):
 
-      # select step size
-      t = 0.001
-
-      # Polyak
-      #t = f / np.linalg.norm(g,2)**2
-
-      # Dynamic
-      #t = 1/(np.linalg.norm(g,2)*np.sqrt(iter+1))
-      # get subgradient
+      # reconstruction error: [n]
+      x_e = reconstruct_img(x, x_0, K).ravel() - b
 
       # update params for each kernel
       for i in range(N):
 
         # get the subgradient
-        g = get_subgradient(x[i], x_0, K[i], b, alpha)
+        g = get_subgradient(x[i], x_0, K[i], b, alpha, x_e)
+
+        # Dynamic step size
+        if t is None:
+          t = 1 / (np.linalg.norm(g, ord=2) * np.sqrt(k + 1))
 
         # update params
         x[i] = x[i] - t * g
@@ -141,7 +139,7 @@ def subgradient_descent(x, x_0, K, b, alpha, max_iter):
 
       # print iteration info
       #plot_compare_results(x_0, x_hat, b.reshape(n1, n2))
-      print_iteration_info(k, energy[k], ssd[k], sparsity[k])
+      print_iteration_info(k, t, energy[k], ssd[k], sparsity[k])
 
 
     return x, energy, ssd, sparsity
@@ -160,7 +158,8 @@ def provided_algorithm(x, x_0, K, b, alpha, max_iter):
     x = x.copy()
 
     # Lipschitz constant (choose high enough)
-    L = 10
+    L = 20
+    #L = 100
 
     # get shapes
     n = len(b)
@@ -207,16 +206,17 @@ def provided_algorithm(x, x_0, K, b, alpha, max_iter):
 
         # print iteration info
         #plot_compare_results(x_0, x_hat, b.reshape(n1, n2))
-        print_iteration_info(k, energy[k], ssd[k], sparsity[k])
+        print_iteration_info(k, None, energy[k], ssd[k], sparsity[k])
 
     return x, energy, ssd, sparsity
 
 
-def print_iteration_info(k, energy, ssd, sparsity):
+def print_iteration_info(k, t, energy, ssd, sparsity):
   """
   print text info in each iteration
   """
-  print("iteration: {} with energy=[{:.2f}], ssd=[{:.2f}], sparsity=[{:.4f}] ".format(k, energy, ssd, sparsity))
+  if (k % 10) == 0 or k == 0:
+    print("it: {}, t: {} with energy=[{:.2f}], ssd=[{:.2f}], sparsity=[{:.4f}] ".format(k, t, energy, ssd, sparsity))
 
 
 def plot_compare_results(x_0, x_hat, b):
@@ -233,7 +233,7 @@ def plot_compare_results(x_0, x_hat, b):
   #plt.show()
 
 
-def plot_end_result(x_0, x_init, x_sgd, x_p, b, metrics, labels_metrics, labels_algo):
+def plot_end_result(x_0, x_init, x_sgd, x_p, b, metrics, labels_metrics, labels_algo, max_iter, fn_coda=''):
   """
   plot the end result
   """
@@ -241,7 +241,7 @@ def plot_end_result(x_0, x_init, x_sgd, x_p, b, metrics, labels_metrics, labels_
   # setup figure
   fig = plt.figure(figsize=(12, 8))
 
-  # make a grid
+  # create a grid
   n_rows, n_cols = 3, 7
   gs = plt.GridSpec(n_rows, n_cols, wspace=0.4, hspace=0.3)
 
@@ -269,10 +269,18 @@ def plot_end_result(x_0, x_init, x_sgd, x_p, b, metrics, labels_metrics, labels_
     for m, l in zip(metric, labels_algo):
       ax.plot(m, label=l)
 
+    # log scale
+    ax.set_yscale('log')
+
     # set some labels
     ax.set_ylabel(labels_metrics[i])
+    if i == len(metrics)-1:
+      ax.set_xlabel('Iterations')
+
     ax.legend()
     ax.grid()
+
+  plt.savefig('./end_result_it-' + str(max_iter) + '_' + fn_coda + '.png', dpi=150)
 
 
 def plot_metrics(metrics, labels_metrics, labels_algo):
@@ -350,21 +358,22 @@ if __name__ == '__main__':
   #print("alpha: ", alpha)
 
   # TODO: choose properly
-  max_iter = 5
+  max_iter = 500
   alpha = 0.006
+  #alpha = 1
+  #alpha = 0.1
+  #alpha = 0.0001
+
+  # use fixed step size for sgd
+  t_sgd = 0.01
 
   # compute the reconstruction using subgradient descent
-  x_sgd, energy_sgd, ssd_sgd, sparsity_sgd = subgradient_descent(x, x_0, K, b.ravel(), alpha, max_iter)
+  x_sgd, energy_sgd, ssd_sgd, sparsity_sgd = subgradient_descent(x, x_0, K, b.ravel(), alpha, max_iter, t_sgd)
   x_hat_sgd = reconstruct_img(x_sgd, x_0, K)
 
   # compute the reconstruction using the provided algorithm
   x_p, energy_p, ssd_p, sparsity_p = provided_algorithm(x, x_0, K, b.ravel(), alpha, max_iter)
   x_hat_p = reconstruct_img(x_p, x_0, K)
-
-  # plotting
-  # TODO: 
-  #   - plot the resulting reconstructions
-  #   - loglog plot of the energy, SSD and sparsity
 
   # collect metrics
   metrics = [[energy_sgd, energy_p], [ssd_sgd, ssd_p], [sparsity_sgd, sparsity_p]]
@@ -386,10 +395,6 @@ if __name__ == '__main__':
   #plot_metrics(metrics, labels_metrics, labels_algo)
   
   # plot end results
-  plot_end_result(x_0, x_hat_init, x_hat_sgd, x_hat_p, b, metrics, labels_metrics, labels_algo)
-
-  # plt.figure()
-  # plt.plot(sparsity_p)
-  # plt.show()
+  plot_end_result(x_0, x_hat_init, x_hat_sgd, x_hat_p, b, metrics, labels_metrics, labels_algo, max_iter, fn_coda='t-' + str(t_sgd) + '_a-' + str(alpha))
 
   plt.show()
