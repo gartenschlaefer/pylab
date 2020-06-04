@@ -6,7 +6,7 @@ import imageio
 import matplotlib.pyplot as plt
 
 
-def calc_energy(u, u_0, lam):
+def calc_energy(u, u_0, D, lam):
     """
     calculate the energy of the minimization task
     """
@@ -18,21 +18,27 @@ def calc_energy(u, u_0, lam):
     return lam * np.linalg.norm(D @ u, ord=1) + 0.5 * (u_e.T @ u_e)
 
 
-def get_subgradient():
+def get_subgradient(u, u_0, D, lam):
     """
     get the subgradient of the minimization function
     """
 
-    # TODO: implement
+    # first subgradient
+    f1 = lam * (np.sign(D @ u) @ D)
 
-    return 1
+    # second subgradient
+    f2 = u - u_0
+
+    return f1 + f2
 
 
-def subgradient_descent(u_0, D, lam, max_iter, t=None):
+def subgradient_descent(u, u_0, D, lam, max_iter, t=None):
     """
     subgradient descent algorithm
     t is the step size, if None, the dynamic step size is used
     """
+
+    u = u.copy()
 
     # init
     energy = np.zeros((max_iter,), dtype=np.float32)
@@ -44,7 +50,7 @@ def subgradient_descent(u_0, D, lam, max_iter, t=None):
     for k in range(max_iter):
 
         # get the subgradient
-        g = get_subgradient()
+        g = get_subgradient(u, u_0, D, lam)
 
         # step size
         if t is None:
@@ -52,14 +58,11 @@ def subgradient_descent(u_0, D, lam, max_iter, t=None):
             # use dynamic step size
             t = 1 / (np.linalg.norm(g, ord=2) * np.sqrt(k + 1))
 
-        # update params
-        #x[i] = x[i] - t * g
-
-        # TODO: denoised image
-        u = u_0
+        # update image
+        u = u - t * g
 
         # calculate energy
-        energy[k] = calc_energy(u, u_0, lam)
+        energy[k] = calc_energy(u, u_0, D, lam)
 
         # print iteration info
         print_iteration_info(k, energy[k], max_iter)
@@ -105,7 +108,7 @@ def print_iteration_info(k, energy, max_iter):
   if (k % 10) == 0 or k == 0 or k==max_iter-1:
 
     # print info
-    print("it: {} with energy=[{:.2f}]] ".format(k, energy))
+    print("it: {} with energy=[{:.4f}]] ".format(k + 1, energy))
 
 
 def plot_diff(u_0, D_u):
@@ -117,6 +120,21 @@ def plot_diff(u_0, D_u):
     ax[0].imshow(u_0.reshape(m,n),cmap='gray')
     ax[1].imshow(D_u.reshape(2,m,n)[0],cmap='gray')
     ax[2].imshow(D_u.reshape(2,m,n)[1],cmap='gray')
+
+
+def plot_result(u, u_0, target):
+    """
+    plot result
+    """
+
+    # shape of things
+    m, n = target.shape
+
+    # plots
+    fig, ax = plt.subplots(1, 3)
+    ax[0].imshow(u_0.reshape(m, n), cmap='gray')
+    ax[1].imshow(u.reshape(m, n), cmap='gray')
+    ax[2].imshow(target.reshape(m, n), cmap='gray')
 
 
 if __name__ == '__main__':
@@ -140,12 +158,17 @@ if __name__ == '__main__':
     # apply linear operator
     D_u = D @ u_0
 
+    # init u
+    #u = u_0.copy()
+    u = np.random.randn(*target.shape).astype(target.dtype).ravel()
+
+
 
     # --
     # params
 
     # max iterations
-    max_iter = 5
+    max_iter = 1000
 
     # step size
     t_sgd = 0.01
@@ -155,11 +178,20 @@ if __name__ == '__main__':
 
     # choose lambda for testing
     lam = lams[0]
+    #lam = 0.04
 
     # subgradient descent
-    u, energy_sgd = subgradient_descent(u_0, D, lam, max_iter, t_sgd)
+    u, energy_sgd = subgradient_descent(u, u_0, D, lam, max_iter, t_sgd)
+
+
+    # print end results
+    print("\n--End results:")
+    print("sgd:\t energy=[{:.4f}]".format(energy_sgd[-1]))
+
+    # plot optimmization
+    plot_result(u, u_0, target)
 
     # some plots
-    plot_diff(u_0, D_u)
+    #plot_diff(u_0, D_u)
 
     plt.show()
