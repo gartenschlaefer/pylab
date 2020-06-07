@@ -6,9 +6,9 @@ import imageio
 import matplotlib.pyplot as plt
 
 
-def calc_energy(u, u_0, D, lam):
+def calc_energy_primal(u, u_0, D, lam):
     """
-    calculate the energy of the minimization task
+    calculate energy of the primal problem
     """
 
     # error of reconstruction
@@ -18,9 +18,21 @@ def calc_energy(u, u_0, D, lam):
     return lam * np.linalg.norm(D @ u, ord=1) + 0.5 * (u_e.T @ u_e)
 
 
-def get_subgradient(u, u_0, D, lam):
+def calc_energy_dual(p, u_0, D, lam):
     """
-    get the subgradient of the minimization function
+    calculate energy of the dual problem
+    """
+
+    # dual reconstruction
+    D_p = D.T @ p
+
+    # return energy
+    return -0.5 * (D_p.T @ D_p) + (D_p @ u_0)
+
+
+def get_subgradient_primal(u, u_0, D, lam):
+    """
+    subgradient of the primal problem
     """
 
     # first subgradient
@@ -30,6 +42,78 @@ def get_subgradient(u, u_0, D, lam):
     f2 = u - u_0
 
     return f1 + f2
+
+
+def get_subgradient_dual(p, u_0, D):
+    """
+    subgradient for the dual problem
+    """
+
+    # first subgradient
+    f1 = -D.T @ p @ D.T
+    #f1 = - D @ D.T @ p
+
+    # second subgradient
+    f2 = D @ u_0
+
+    return f1 + f2
+
+
+def prox_map_dual(p, g, t, lam):
+    """
+    proximal map for the dual problem
+    """
+
+    # compute update rule (ascent) x:[2n]
+    x = p + t * g
+
+    # return projection
+    return x / np.maximum(np.ones(x.shape), np.abs(x))
+    #return x / np.maximum(np.ones(x.shape) * lam, np.abs(x))
+    #return x
+
+
+def gradient_ascent(p, u_0, D, lam, max_iter, t=None):
+    """
+    gradient ascent algorithm
+    t is the step size, if None, the dynamic step size is used
+    """
+
+    p = p.copy()
+
+    # init
+    energy_dual = np.zeros((max_iter,), dtype=np.float32)
+    energy_prim = np.zeros((max_iter,), dtype=np.float32)
+
+    # print some infos:
+    print("\n--gradient ascent algorithm")
+
+    # over all iterations
+    for k in range(max_iter):
+
+        # get the subgradient
+        g = get_subgradient_dual(p, u_0, D)
+
+        # dynamic step size
+        if t is None:
+
+            # use dynamic step size
+            t = 1 / (np.linalg.norm(g, ord=2) * np.sqrt(k + 1))
+
+        # proximal map
+        p = prox_map_dual(p, g, t, lam)
+
+        # calculate energy
+        energy_dual[k] = calc_energy_dual(p, u_0, D, lam)
+        energy_prim[k] = calc_energy_primal(u_0 - D.T @ p, u_0, D, lam)
+
+        # print iteration info
+        print_iteration_info(k, energy_dual[k], max_iter)
+
+    # primal solution from dual problem
+    u = u_0 - D.T @ p
+
+    return u, energy_dual, energy_prim
 
 
 def subgradient_descent(u, u_0, D, lam, max_iter, t=None):
@@ -44,13 +128,13 @@ def subgradient_descent(u, u_0, D, lam, max_iter, t=None):
     energy = np.zeros((max_iter,), dtype=np.float32)
 
     # print some infos:
-    print("\n--subgradient descent algoritm")
+    print("\n--subgradient descent algorithm")
 
     # over all iterations
     for k in range(max_iter):
 
         # get the subgradient
-        g = get_subgradient(u, u_0, D, lam)
+        g = get_subgradient_primal(u, u_0, D, lam)
 
         # step size
         if t is None:
@@ -62,7 +146,7 @@ def subgradient_descent(u, u_0, D, lam, max_iter, t=None):
         u = u - t * g
 
         # calculate energy
-        energy[k] = calc_energy(u, u_0, D, lam)
+        energy[k] = calc_energy_primal(u, u_0, D, lam)
 
         # print iteration info
         print_iteration_info(k, energy[k], max_iter)
@@ -105,7 +189,7 @@ def print_iteration_info(k, energy, max_iter):
   """
 
   # print each 10-th time
-  if (k % 10) == 0 or k == 0 or k==max_iter-1:
+  if (k % 10) == 9 or k == 0 or k==max_iter-1:
 
     # print info
     print("it: {} with energy=[{:.4f}]] ".format(k + 1, energy))
@@ -122,7 +206,7 @@ def plot_diff(u_0, D_u):
     ax[2].imshow(D_u.reshape(2,m,n)[1],cmap='gray')
 
 
-def plot_result(u, u_0, target):
+def plot_result(u_prim, u_dual, u_0, target):
     """
     plot result
     """
@@ -131,10 +215,65 @@ def plot_result(u, u_0, target):
     m, n = target.shape
 
     # plots
-    fig, ax = plt.subplots(1, 3)
+    fig, ax = plt.subplots(1, 4)
     ax[0].imshow(u_0.reshape(m, n), cmap='gray')
-    ax[1].imshow(u.reshape(m, n), cmap='gray')
-    ax[2].imshow(target.reshape(m, n), cmap='gray')
+    ax[1].imshow(u_prim.reshape(m, n), cmap='gray')
+    ax[2].imshow(u_dual.reshape(m, n), cmap='gray')
+    ax[3].imshow(target.reshape(m, n), cmap='gray')
+
+
+def plot_end_result(u_prim, u_dual, u_0, target, metrics, labels_metrics, labels_algo, max_iter, lam, fn_coda=''):
+  """
+  plot the end result
+  """
+
+  # setup figure
+  fig = plt.figure(figsize=(12, 8))
+
+  # create a grid
+  n_rows, n_cols = 2, 4
+  gs = plt.GridSpec(n_rows, n_cols, wspace=0.4, hspace=0.3)
+
+  # titles
+  t_list = [r'$u_0$', r'$\hat{u}_{target}$', r'$\hat{u}_{primal}$', r'$\hat{u}_{dual}$']
+
+  # vars
+  x_list = [u_0, target, u_prim, u_dual]
+  pos = [(0, 0), (0, 1), (0, 2), (0, 3)]
+
+  # plot images
+  for t, x, p in zip(t_list, x_list, pos):
+
+    # plot
+    ax = fig.add_subplot(gs[p])
+    ax.imshow(x.reshape(target.shape), cmap='gray')
+    ax.set_yticks([])
+    ax.set_xticks([])
+    ax.set_title(t)
+
+  # plot metrics
+  for i, metric in enumerate(metrics):
+
+    # get axis
+    ax = fig.add_subplot(gs[1, 0:])
+
+    # plot all metric curves
+    for m, l in zip(metric, labels_algo):
+      ax.plot(m, label=l)
+
+    # log scale
+    ax.set_yscale('log')
+
+    # set some labels
+    ax.set_ylabel(labels_metrics[i])
+    if i == len(metrics)-1:
+      ax.set_xlabel('Iterations')
+
+    ax.set_title(r'Primal Energies with param: $\lambda = $' + str(lam))
+    ax.legend()
+    ax.grid()
+
+  plt.savefig('./end_result_it-' + str(max_iter) + '_' + 'lam-' + str(lam).replace('.','p') + fn_coda + '.png', dpi=150)
 
 
 if __name__ == '__main__':
@@ -158,9 +297,10 @@ if __name__ == '__main__':
     # apply linear operator
     D_u = D @ u_0
 
-    # init u
+    # init primal and dual
     #u = u_0.copy()
-    u = np.random.randn(*target.shape).astype(target.dtype).ravel()
+    u = np.random.randn(n * m).astype(target.dtype).ravel()
+    p = np.random.randn(2 * n * m).astype(target.dtype)
 
 
 
@@ -168,28 +308,51 @@ if __name__ == '__main__':
     # params
 
     # max iterations
-    max_iter = 1000
+    max_iter = 500
+    #max_iter = 50
 
     # step size
-    t_sgd = 0.01
+    t_primal = 0.01
+    t_dual = 0.01
 
     # lambda
     lams = [0.01, 0.1, 1.0]
 
     # choose lambda for testing
-    lam = lams[0]
+    lam = lams[1]
     #lam = 0.04
 
     # subgradient descent
-    u, energy_sgd = subgradient_descent(u, u_0, D, lam, max_iter, t_sgd)
+    u_primal, energy_primal = subgradient_descent(u, u_0, D, lam, max_iter, t_primal)
+
+    # gradient ascent of dual problem
+    u_dual, energy_dual, energy_dual_primal = gradient_ascent(p, u_0, D, lam, max_iter, t_dual)
 
 
     # print end results
     print("\n--End results:")
-    print("sgd:\t energy=[{:.4f}]".format(energy_sgd[-1]))
+    print("primal:\t energy=[{:.4f}]".format(energy_primal[-1]))
+    print("dual:\t energy=[{:.4f}]".format(energy_dual[-1]))
 
-    # plot optimmization
-    plot_result(u, u_0, target)
+
+    # --
+    # some further plots
+
+    # collect metrics
+    metrics = [[energy_primal, energy_dual_primal]]
+  
+    # labels of metrics
+    labels_metrics, labels_algo = ['Energy'], ['primal', 'dual']
+
+    # end result
+    plot_end_result(u_primal, u_dual, u_0, target, metrics, labels_metrics, labels_algo, max_iter, lam, fn_coda='_test')
+
+    # plot optimization
+    #plot_result(u_primal, u_dual, u_0, target)
+
+    print("shapes: ", target.shape)
+    print("max row: ", np.max(np.sum(np.abs(D), axis=0)))
+    print("max col: ", np.max(np.sum(np.abs(D), axis=1)))
 
     # some plots
     #plot_diff(u_0, D_u)
