@@ -64,13 +64,7 @@ def prox_map_dual(p, g, t, lam):
     proximal map for the dual problem
     """
 
-    # compute update rule (ascent) x:[2n]
-    x = p + t * g
-
-    # return projection
-    return x / np.maximum(np.ones(x.shape), np.abs(x))
-    #return x / np.maximum(np.ones(x.shape) * lam, np.abs(x))
-    #return x
+    return np.clip(p + t * g, -lam, lam)
 
 
 def gradient_ascent(p, u_0, D, lam, max_iter, t=None):
@@ -192,7 +186,7 @@ def print_iteration_info(k, energy, max_iter):
   if (k % 10) == 9 or k == 0 or k==max_iter-1:
 
     # print info
-    print("it: {} with energy=[{:.4f}]] ".format(k + 1, energy))
+    print("it: {} with energy=[{:.4f}] ".format(k + 1, energy))
 
 
 def plot_diff(u_0, D_u):
@@ -222,7 +216,7 @@ def plot_result(u_prim, u_dual, u_0, target):
     ax[3].imshow(target.reshape(m, n), cmap='gray')
 
 
-def plot_end_result(u_prim, u_dual, u_0, target, metrics, labels_metrics, labels_algo, max_iter, lam, fn_coda=''):
+def plot_end_result(u_prim, u_dual, u_0, target, metrics, labels_metrics, labels_algo, max_iter, lam, t_primal, fn_coda=''):
   """
   plot the end result
   """
@@ -273,8 +267,61 @@ def plot_end_result(u_prim, u_dual, u_0, target, metrics, labels_metrics, labels
     ax.legend()
     ax.grid()
 
-  plt.savefig('./end_result_it-' + str(max_iter) + '_' + 'lam-' + str(lam).replace('.','p') + fn_coda + '.png', dpi=150)
+  plt.savefig('./end_result_it-' + str(max_iter) + '_' + 'lam-' + str(lam).replace('.','p') + fn_coda + '_t-' + str(t_primal).replace('.','p') + '.png', dpi=150)
 
+
+def plot_dual_result(u_dual, u_0, target, metrics, labels_metrics, labels_algo, max_iter, lam, t_primal, fn_coda=''):
+  """
+  plot the end result
+  """
+
+  # setup figure
+  fig = plt.figure(figsize=(12, 8))
+
+  # create a grid
+  n_rows, n_cols = 2, 3
+  gs = plt.GridSpec(n_rows, n_cols, wspace=0.4, hspace=0.3)
+
+  # titles
+  t_list = [r'$u_0$', r'$\hat{u}_{target}$', r'$\hat{u}_{dual}$']
+
+  # vars
+  x_list = [u_0, target, u_dual]
+  pos = [(0, 0), (0, 1), (0, 2)]
+
+  # plot images
+  for t, x, p in zip(t_list, x_list, pos):
+
+    # plot
+    ax = fig.add_subplot(gs[p])
+    ax.imshow(x.reshape(target.shape), cmap='gray')
+    ax.set_yticks([])
+    ax.set_xticks([])
+    ax.set_title(t)
+
+  # plot metrics
+  for i, metric in enumerate(metrics):
+
+    # get axis
+    ax = fig.add_subplot(gs[1, 0:])
+
+    # plot all metric curves
+    for m, l in zip(metric, labels_algo):
+      ax.plot(m, label=l, color='tab:orange')
+
+    # log scale
+    ax.set_yscale('log')
+
+    # set some labels
+    ax.set_ylabel(labels_metrics[i])
+    if i == len(metrics)-1:
+      ax.set_xlabel('Iterations')
+
+    ax.set_title(r'Dual Energy with param: $\lambda = $' + str(lam))
+    ax.legend()
+    ax.grid()
+
+  plt.savefig('./dual_it-' + str(max_iter) + '_' + 'lam-' + str(lam).replace('.','p') + fn_coda + '_t-' + str(t_primal).replace('.','p') + '.png', dpi=150)
 
 if __name__ == '__main__':
     """
@@ -312,8 +359,14 @@ if __name__ == '__main__':
     #max_iter = 50
 
     # step size
+    #t_primal = 0.01
+
+    #t_primal = 0.1
+    #t_primal = 0.1
+    #t_primal = 1 / np.sqrt(8)
     t_primal = 0.01
-    t_dual = 0.01
+    #t_primal = None
+    t_dual = t_primal
 
     # lambda
     lams = [0.01, 0.1, 1.0]
@@ -338,21 +391,28 @@ if __name__ == '__main__':
     # --
     # some further plots
 
-    # collect metrics
-    metrics = [[energy_primal, energy_dual_primal]]
+    metrics = [[energy_dual]]
   
     # labels of metrics
-    labels_metrics, labels_algo = ['Energy'], ['primal', 'dual']
+    labels_metrics, labels_algo = ['Dual Energy'], ['dual']
+
+    plot_dual_result(u_dual, u_0, target, metrics, labels_metrics, labels_algo, max_iter, lam, t_primal, fn_coda='')
+
+    # collect metrics
+    #metrics = [[energy_primal, energy_dual_primal]]
+  
+    # labels of metrics
+    #labels_metrics, labels_algo = ['Energy'], ['primal', 'dual']
 
     # end result
-    plot_end_result(u_primal, u_dual, u_0, target, metrics, labels_metrics, labels_algo, max_iter, lam, fn_coda='_test')
+    #plot_end_result(u_primal, u_dual, u_0, target, metrics, labels_metrics, labels_algo, max_iter, lam, t_primal, fn_coda='')
 
     # plot optimization
     #plot_result(u_primal, u_dual, u_0, target)
 
-    print("shapes: ", target.shape)
-    print("max row: ", np.max(np.sum(np.abs(D), axis=0)))
-    print("max col: ", np.max(np.sum(np.abs(D), axis=1)))
+    #print("shapes: ", target.shape)
+    #print("max row: ", np.max(np.sum(np.abs(D), axis=0)))
+    #print("max col: ", np.max(np.sum(np.abs(D), axis=1)))
 
     # some plots
     #plot_diff(u_0, D_u)
