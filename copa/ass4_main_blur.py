@@ -21,34 +21,41 @@ def unreg_deblur(a_full, b):
   unregularized image deblurring
   """
 
-  # shape of things
-  M, N = b.shape
-
   # get the Fourier coefficients of the blur kernel
   a_hat = np.fft.fft2(a_full).ravel()
   b_hat = np.fft.fft2(b).ravel()
 
-  # efficient diagonal matrix
-  a_diag = 1 / a_hat
+  # efficiently invert diagonal matrix
+  a_diag_inv = 1 / a_hat
 
   # reconstruct
-  x = np.fft.ifft2((a_diag * b_hat).reshape(M, N)).real
+  x = np.fft.ifft2((a_diag_inv * b_hat).reshape(b.shape)).real
 
   return x
 
 
-def prox_map_implicit():
+def prox_map_implicit(x, b, a_hat, tau):
   """
   proximal map of implicit solution
   """
 
+  return F_T( (1 / (1 + tau * a_hat * np.conj(a_hat))) * (F(x) + tau * np.conj(a_hat) * F(b)) )
 
-def pdhg_algorithm(x, y, b, a_hat, D, lam, max_iter, tau, sigm, algo='explic'):
+
+def prox_map_quadratic(z, sigm):
+  """
+  proximal map of quadratic solution
+  """
+
+  return z / sigm
+
+
+def pdhg_algorithm(x, y, z, b, a_hat, D, lam, max_iter, tau, sigm, algo='explic'):
   """
   PDHG algorithm all possible solutions
   algo='explic':	explicit steps on the data fidelity term
   algo='implic':	implicit proximal steps on the data fidelity term
-  algo='dual':		dualization of the quadratic data fidelity term
+  algo='quadratic':		dualization of the quadratic data fidelity term
   """
 
   x = x.copy()
@@ -75,16 +82,17 @@ def pdhg_algorithm(x, y, b, a_hat, D, lam, max_iter, tau, sigm, algo='explic'):
     elif algo == 'implic':
 
       x_pre = x
-      #x = 
+      x = prox_map_implicit(x - tau * (D.T @ y), b, a_hat, tau)
       y = np.clip(y + sigm * D @ (2 * x - x_pre), -lam, lam)
 
 
-    # dual solution
+    # dual of quadratic data fidelity solution
     else:
 
-      # TODO:
-      x = x
-      y = y
+      x_pre = x
+      x = x - tau * (D.T @ y + A_T(z, a_hat))
+      y = np.clip(y + sigm * D @ (2 * x - x_pre), -lam, lam)
+      z = prox_map_quadratic(z + sigm * (A(2 * x - x_pre, a_hat) - b.ravel()), sigm)
 
     # calculate energy
     energy[k] = calc_energy_primal(x, b, a_hat, D, lam)
@@ -121,6 +129,22 @@ def get_D(M,N):
   FD = sp.vstack([FD1, FD2])
 
   return FD
+
+
+def F(x):
+  """
+  2D fft transform
+  """
+
+  return np.fft.fft2(x.reshape(m, n)).ravel()
+
+
+def F_T(x):
+  """
+  inverse 2D fft transform
+  """
+
+  return np.fft.ifft2(x.reshape(m, n)).real.ravel()
 
 
 def A(x, a_hat):
@@ -168,9 +192,10 @@ def plot_result(a, b, name='img'):
   plot the result
   """
 
-  fig, ax = plt.subplots(1, 2)
-  ax[0].imshow(a.reshape(m,n), cmap='gray')
-  ax[1].imshow(b.reshape(m,n), cmap='gray')
+  fig, ax = plt.subplots(1, 2, figsize=(6, 3))
+  ax[0].imshow(a.reshape(m,n), cmap='gray'), ax[0].set_title(r"$b$")
+  ax[1].imshow(b.reshape(m,n), cmap='gray'), ax[1].set_title(r"$x_{D}$")
+  plt.tight_layout()
 
   plt.savefig('./' + name + '.png', dpi=150)
 
@@ -216,6 +241,7 @@ def plot_end_result(b, x_hat, metrics, labels_metrics, labels_algo, name='end_re
 
     # log scale
     ax.set_yscale('log')
+    ax.set_xscale('log')
 
     # set some labels
     ax.set_ylabel(labels_metrics[i])
@@ -256,47 +282,42 @@ if __name__ == '__main__':
   a_hat = np.fft.fft2(a_full).ravel()
 
 
-  # init deblurred image randomly
-  x = np.random.randn(m * n).astype(b.dtype)
-  y = np.random.randn(m * n * 2).astype(b.dtype)
+  # init variables with zeros
+  x = np.zeros(m * n).astype(b.dtype)
+  y = np.zeros(2 * m * n).astype(b.dtype)
+  z = np.zeros(m * n).astype(b.dtype)
 
   # differential operator	
   D = get_D(m, n)
 
   # max iterations
-  max_iter = 500
+  max_iter = 200
 
-  # step size
-  tau, sigm = 1, 1
+  # step sizes
+  tau, sigm = 1/16, 1/16
 
   # lambda
-  lam = 0.002
+  lam = 0.001
 
   # all algorithms for the pdhg
-  algos = ['explic', 'implic', 'dual']
+  algos = ['explic', 'implic', 'quadratic']
 
   # choose algo
-  algo = algos[0]
+  algo = algos[1]
 
 
   # unregularized image deblurring
   x_unreg = unreg_deblur(a_full, b)
 
   # pdhg algorithm
-  x_pdhg1, energy_primal = pdhg_algorithm(x, y, b, a_hat, D, lam, max_iter, tau, sigm, algo=algo)
-
-
-  # test blurring matrix
-  x = A(b, a_hat)
-  y = A_T(b, a_hat)
-  z = A_T(A(b, a_hat), a_hat)
+  x_pdhg1, energy_primal = pdhg_algorithm(x, y, z, b, a_hat, D, lam, max_iter, tau, sigm, algo=algo)
 
 
   # collect metrics
   metrics = [[energy_primal]]
 
   # labels of metrics
-  labels_metrics, labels_algo = ['Energy'], ['primal']
+  labels_metrics, labels_algo = ['Energy'], [algo]
 
   # param string for plots
   param_str = '_algo-{}_it-{}_lam-{}_tau-{}_sigm-{}'.format(algo, max_iter, str(lam).replace('.', 'p'), str(tau).replace('.', 'p'), str(sigm).replace('.', 'p'))
@@ -307,12 +328,7 @@ if __name__ == '__main__':
   # end result
   plot_end_result(b, x_pdhg1, metrics, labels_metrics, labels_algo, name='end_result' + param_str)
 
-  # plot result
-  #plot_result(b, x_unreg)
-  #plot_result(b, x)
-  #plot_result(b, y)
-  #plot_result(b, z)
-  #plot_result(b, x_pdhg1, name='pdhg' + param_str)
-
+  # plot unreg result
+  #plot_result(b, x_unreg, name='unreg')
 
   plt.show()
