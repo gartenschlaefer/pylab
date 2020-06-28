@@ -53,13 +53,14 @@ def prox_map_quadratic(z, sigm):
 def pdhg_algorithm(x, y, z, b, a_hat, D, lam, max_iter, tau, sigm, algo='explic'):
   """
   PDHG algorithm all possible solutions
-  algo='explic':	explicit steps on the data fidelity term
-  algo='implic':	implicit proximal steps on the data fidelity term
-  algo='quadratic':		dualization of the quadratic data fidelity term
+  algo='expl':	explicit steps on the data fidelity term
+  algo='impl':	implicit proximal steps on the data fidelity term
+  algo='quad':		dualization of the quadratic data fidelity term
   """
 
   x = x.copy()
   y = y.copy()
+  z = z.copy()
 
   # init energy
   energy = np.zeros((max_iter,), dtype=np.float32)
@@ -71,7 +72,7 @@ def pdhg_algorithm(x, y, z, b, a_hat, D, lam, max_iter, tau, sigm, algo='explic'
   for k in range(max_iter):
 
     # explicit solution updates
-    if algo == 'explic':
+    if algo == 'expl':
 
       x_pre = x
       x = x - tau * (D.T @ y + A_T(A(x, a_hat) - b.ravel(), a_hat))
@@ -79,7 +80,7 @@ def pdhg_algorithm(x, y, z, b, a_hat, D, lam, max_iter, tau, sigm, algo='explic'
 
 
     # implicit solution
-    elif algo == 'implic':
+    elif algo == 'impl':
 
       x_pre = x
       x = prox_map_implicit(x - tau * (D.T @ y), b, a_hat, tau)
@@ -200,7 +201,7 @@ def plot_result(a, b, name='img'):
   plt.savefig('./' + name + '.png', dpi=150)
 
 
-def plot_end_result(b, x_hat, metrics, labels_metrics, labels_algo, name='end_result'):
+def plot_end_result(imgs, imgs_titles, metrics, labels_metrics, labels_algo, name='end_result'):
   """
   plot the end result
   """
@@ -209,22 +210,18 @@ def plot_end_result(b, x_hat, metrics, labels_metrics, labels_algo, name='end_re
   fig = plt.figure(figsize=(12, 8))
 
   # create a grid
-  n_rows, n_cols = 2, 2
+  n_rows, n_cols = 1 + len(metrics), len(imgs)
   gs = plt.GridSpec(n_rows, n_cols, wspace=0.4, hspace=0.3)
 
-  # titles
-  t_list = [r'$b$', r'$x$']
-
-  # vars
-  x_list = [b, x_hat]
-  pos = [(0, 0), (0, 1)]
+  # pos
+  pos = [(0, 0), (0, 1), (0, 2), (0, 3)]
 
   # plot images
-  for t, x, p in zip(t_list, x_list, pos):
+  for t, x, p in zip(imgs_titles, imgs, pos):
 
     # plot
     ax = fig.add_subplot(gs[p])
-    ax.imshow(x.reshape(b.shape), cmap='gray')
+    ax.imshow(x.reshape(m, n), cmap='gray')
     ax.set_yticks([])
     ax.set_xticks([])
     ax.set_title(t)
@@ -236,8 +233,8 @@ def plot_end_result(b, x_hat, metrics, labels_metrics, labels_algo, name='end_re
     ax = fig.add_subplot(gs[1, 0:])
 
     # plot all metric curves
-    for m, l in zip(metric, labels_algo):
-      ax.plot(m, label=l)
+    for met, l in zip(metric, labels_algo):
+      ax.plot(met, label=l)
 
     # log scale
     ax.set_yscale('log')
@@ -281,6 +278,8 @@ if __name__ == '__main__':
   # a wide-hat
   a_hat = np.fft.fft2(a_full).ravel()
 
+  # unregularized image deblurring
+  x_unreg = unreg_deblur(a_full, b)
 
   # init variables with zeros
   x = np.zeros(m * n).astype(b.dtype)
@@ -291,7 +290,7 @@ if __name__ == '__main__':
   D = get_D(m, n)
 
   # max iterations
-  max_iter = 200
+  max_iter = 100
 
   # step sizes
   tau, sigm = 1/16, 1/16
@@ -300,33 +299,42 @@ if __name__ == '__main__':
   lam = 0.001
 
   # all algorithms for the pdhg
-  algos = ['explic', 'implic', 'quadratic']
+  algos = ['expl', 'impl', 'quad']
+  #algos = ['expl', 'impl']
 
-  # choose algo
-  algo = algos[1]
+  # init container vars
+  imgs, energy_list,  = [b], []
 
 
-  # unregularized image deblurring
-  x_unreg = unreg_deblur(a_full, b)
+  # run through all pdhg solutions
+  for algo in algos:
+    
+    # pdhg algorithm
+    x_pdhg, energy_primal = pdhg_algorithm(x, y, z, b, a_hat, D, lam, max_iter, tau, sigm, algo=algo)
 
-  # pdhg algorithm
-  x_pdhg1, energy_primal = pdhg_algorithm(x, y, z, b, a_hat, D, lam, max_iter, tau, sigm, algo=algo)
+    # update lists
+    imgs.append(x_pdhg), energy_list.append(energy_primal)
 
 
   # collect metrics
-  metrics = [[energy_primal]]
+  metrics = [energy_list]
 
   # labels of metrics
-  labels_metrics, labels_algo = ['Energy'], [algo]
+  labels_metrics, labels_algo = ['Energy'], algos
 
   # param string for plots
   param_str = '_algo-{}_it-{}_lam-{}_tau-{}_sigm-{}'.format(algo, max_iter, str(lam).replace('.', 'p'), str(tau).replace('.', 'p'), str(sigm).replace('.', 'p'))
 
+
   # --
   # plots and print
 
+  # titles
+  imgs_titles = [r'$b$'] + [r'$x_{{{}}}$'.format(s) for s in algos]
+  #imgs_titles = [r'$b$', r'$x_{expl}$', r'$x_{impl}$', r'$x_{quad}$']
+
   # end result
-  plot_end_result(b, x_pdhg1, metrics, labels_metrics, labels_algo, name='end_result' + param_str)
+  plot_end_result(imgs, imgs_titles, metrics, labels_metrics, labels_algo, name='end_result' + param_str)
 
   # plot unreg result
   #plot_result(b, x_unreg, name='unreg')
