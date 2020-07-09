@@ -47,10 +47,10 @@ def prox_map_quadratic(z, sigm):
   proximal map of quadratic solution
   """
 
-  return z / sigm
+  return z / (1 + sigm)
 
 
-def pdhg_algorithm(x, y, z, b, a_hat, D, lam, max_iter, tau, sigm, algo='explic'):
+def pdhg_algorithm(x, y, z, b, a_hat, D, lam, max_iter, tau, sigm, algo='explic', dynamic_step=False):
   """
   PDHG algorithm all possible solutions
   algo='expl':	explicit steps on the data fidelity term
@@ -74,6 +74,10 @@ def pdhg_algorithm(x, y, z, b, a_hat, D, lam, max_iter, tau, sigm, algo='explic'
     # explicit solution updates
     if algo == 'expl':
 
+      # dynamic step size (experimental)
+      if dynamic_step:
+        tau = 1 / np.sqrt(k + 1)
+
       x_pre = x
       x = x - tau * (D.T @ y + A_T(A(x, a_hat) - b.ravel(), a_hat))
       y = np.clip(y + sigm * D @ (2 * x - x_pre), -lam, lam)
@@ -82,6 +86,10 @@ def pdhg_algorithm(x, y, z, b, a_hat, D, lam, max_iter, tau, sigm, algo='explic'
     # implicit solution
     elif algo == 'impl':
 
+      # dynamic step size (experimental)
+      if dynamic_step:
+        tau = 1 / np.sqrt(k + 1)
+
       x_pre = x
       x = prox_map_implicit(x - tau * (D.T @ y), b, a_hat, tau)
       y = np.clip(y + sigm * D @ (2 * x - x_pre), -lam, lam)
@@ -89,6 +97,10 @@ def pdhg_algorithm(x, y, z, b, a_hat, D, lam, max_iter, tau, sigm, algo='explic'
 
     # dual of quadratic data fidelity solution
     else:
+
+      # dynamic step size (experimental)
+      if dynamic_step:
+        tau = 1 / np.sqrt(k + 1)
 
       x_pre = x
       x = x - tau * (D.T @ y + A_T(z, a_hat))
@@ -290,27 +302,37 @@ if __name__ == '__main__':
   D = get_D(m, n)
 
   # max iterations
-  max_iter = 100
+  max_iter = 200
 
-  # step sizes
-  tau, sigm = 1/16, 1/16
+  # step sizes (tau, sigm)
+  step_sizes = [(1 / np.sqrt(8), 1 / np.sqrt(8)), (1 / np.sqrt(8), 1 / np.sqrt(8)), (1 / np.sqrt(8), 1 / np.sqrt(8))]
+  #step_sizes = [(1, 1), (1, 1), (1, 1)]
+  #step_sizes = [(1, 1/8), (1, 1/8), (1, 1/8)]
+  #step_sizes = [(1/16, 0.5), (1/16, 0.5), (0.5, 2)]
+  #step_sizes = [(0.5, 2), (0.5, 2), (0.5, 2)]
+  #step_sizes = [(1, 2), (2, 2), (1, 2)]
+  #step_sizes = [(1/8, 1/8), (1/8, 1/8), (1/8, 1/8)]
+  #step_sizes = [(1/16, 1/16), (1/16, 1/16), (1/16, 1/16)]
+  #step_sizes = [(1/100, 1), (1/100, 1), (1/100, 1)]
+
+  # test number for saving plot
+  test_num = 10
 
   # lambda
   lam = 0.001
 
   # all algorithms for the pdhg
   algos = ['expl', 'impl', 'quad']
-  #algos = ['expl', 'impl']
 
   # init container vars
   imgs, energy_list,  = [b], []
 
 
   # run through all pdhg solutions
-  for algo in algos:
-    
+  for algo, step_size in zip(algos, step_sizes):
+
     # pdhg algorithm
-    x_pdhg, energy_primal = pdhg_algorithm(x, y, z, b, a_hat, D, lam, max_iter, tau, sigm, algo=algo)
+    x_pdhg, energy_primal = pdhg_algorithm(x, y, z, b, a_hat, D, lam, max_iter, tau=step_size[0], sigm=step_size[1], algo=algo, dynamic_step=False)
 
     # update lists
     imgs.append(x_pdhg), energy_list.append(energy_primal)
@@ -320,10 +342,15 @@ if __name__ == '__main__':
   metrics = [energy_list]
 
   # labels of metrics
-  labels_metrics, labels_algo = ['Energy'], algos
+  labels_metrics, labels_algo = ['Energy'], [r'{}: $\tau = {:.4f}$, $\sigma = {:.4f}$'.format(algo, step[0], step[1]) for algo, step in zip(algos, step_sizes)]
 
   # param string for plots
-  param_str = '_algo-{}_it-{}_lam-{}_tau-{}_sigm-{}'.format(algo, max_iter, str(lam).replace('.', 'p'), str(tau).replace('.', 'p'), str(sigm).replace('.', 'p'))
+  param_str = '_it-{}_lam-{}_num-{}'.format(max_iter, str(lam).replace('.', 'p'), test_num)
+
+  # Lipschitz stuff
+  print("D: max row: ", np.max(np.sum(np.abs(D), axis=0)))
+  print("D: max col: ", np.max(np.sum(np.abs(D), axis=1)))
+  print("a_hat l2:: ", np.max(a_hat, axis=0))
 
 
   # --
@@ -331,7 +358,6 @@ if __name__ == '__main__':
 
   # titles
   imgs_titles = [r'$b$'] + [r'$x_{{{}}}$'.format(s) for s in algos]
-  #imgs_titles = [r'$b$', r'$x_{expl}$', r'$x_{impl}$', r'$x_{quad}$']
 
   # end result
   plot_end_result(imgs, imgs_titles, metrics, labels_metrics, labels_algo, name='end_result' + param_str)
