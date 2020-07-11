@@ -711,7 +711,31 @@ def score_onset_detection(onsets, labels, tolerance=0.02, time_interval=()):
 
   return (P, R, F)
 
-  
+
+def calc_onsets(x, fs, N=1024, hop=512, adapt_frames=5, adapt_alpha=0.1, adapt_beta=1):
+  """
+  calculate onsets with complex domain and adapt thresh
+  """
+
+  # stft
+  X = stft(x, N=1024, hop=512)
+
+  # complex domain
+  c = complex_domain_onset(X, N)
+
+  # adaptive threshold
+  thresh = adaptive_threshold(c, H=adapt_frames, alpha=adapt_alpha, beta=adapt_beta)
+
+  # get onsets from measure and threshold
+  onsets = thresholding_onset(c, thresh)
+
+  # calculate onset times
+  onset_times = (onsets * np.arange(0, len(onsets)) * hop + N / 2) / fs 
+  onset_times = onset_times[onset_times > N / 2 / fs]
+
+  return onsets, onset_times, c, thresh
+
+
 def thresholding_onset(x, thresh):
   """
   thresholding for onset events
