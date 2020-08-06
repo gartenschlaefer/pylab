@@ -718,7 +718,7 @@ def calc_onsets(x, fs, N=1024, hop=512, adapt_frames=5, adapt_alpha=0.1, adapt_b
   """
 
   # stft
-  X = stft(x, N=1024, hop=512)
+  X = stft(x, N=N, hop=hop)
 
   # complex domain
   c = complex_domain_onset(X, N)
@@ -778,6 +778,7 @@ def adaptive_threshold(g, H=10, alpha=0.05, beta=1):
   # linear mapping
   #thresh = alpha_thresh + beta * thresh
   thresh = alpha * np.max(thresh) + beta * thresh
+  #thresh = alpha * thresh + beta * thresh
 
   #print("max thresh: ", np.max(thresh))
 
