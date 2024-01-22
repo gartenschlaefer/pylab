@@ -1,0 +1,23 @@
+# --
+# config
+#
+# dcase 2023
+# task 5: Few-shot Bioacoustic Event Detection
+
+dataset:
+
+  # path
+  root_path: '/home/christian/Downloads/datasets/dcase2023_task5/'
+  subdir_tain: 'Training_Set/'
+  subdir_val: 'Validation_Set/'
+
+  # class anno files
+  class_anno_csv_files: ['DCASE2022_task5_Training_set_classes.csv', 'DCASE2022_task5_Validation_set_classes.csv']
+
+  # training classes
+  all_train_classes: ['BV', 'HT', 'JD', 'MT', 'WMW']
+  choose_train_classes: ['BV']
+
+  # validation classes
+  all_val_classes: ['HB', 'ME', 'PB']
+  choose_val_classes: ['HB', 'ME', 'PB']
