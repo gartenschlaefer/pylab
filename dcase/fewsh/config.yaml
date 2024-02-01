@@ -4,10 +4,46 @@
 # dcase 2023
 # task 5: Few-shot Bioacoustic Event Detection
 
+# wav reader
+audio_file_reader:
+
+  # path, files and folders
+  src_path: './dataset_link_dcase2023_root/'
+
+  # file subdirs
+  subdirs:
+    train: 'Training_Set/'
+    val: 'Validation_Set/'
+
+  # file extension
+  ext: '.wav'
+
+  # training subdir
+  #subdir_tain: 'Training_Set/'
+  subdir_train_class_folders: ['BV', 'HT', 'JD', 'MT', 'WMW']
+  choose_train_classes: ['BV']
+
+  # validation subdir
+  #subdir_val: 'Validation_Set/'
+  subdir_val_class_folders: ['HB', 'ME', 'PB']
+  choose_val_classes: ['HB']
+
+  # output path
+  out_path: "./ignore/"
+  out_folder: "wav_data/"
+
+  # extractions
+  split_in_sec: 60
+
+  # redo extraction
+  redo_extraction: true
+
+
 dataset:
 
   # path
-  root_path: '/home/christian/Downloads/datasets/dcase2023_task5/'
+  #root_path: '/home/christian/Downloads/datasets/dcase2023_task5/'
+  root_path: './dataset_link_dcase2023_root/'
   subdir_tain: 'Training_Set/'
   subdir_val: 'Validation_Set/'
 
@@ -21,3 +57,14 @@ dataset:
   # validation classes
   all_val_classes: ['HB', 'ME', 'PB']
   choose_val_classes: ['HB', 'ME', 'PB']
+
+  # file extensions
+  audio_file_ext: '.wav'
+  anno_file_ext: '.csv'
+
+  # extractions
+  split_in_sec: 60
+
+  # output path
+  out_path: "./ignore/"
+  out_folder: "wav_data/"
