@@ -27,6 +27,6 @@ if __name__ == '__main__':
 
   # read stuff
   for x, y in iter(wav_reader):
-    print("audio: ", x)
-    print("anno_file: ", y)
+    print("audio: ", x['file'])
+    #print("anno_file: ", y)
     break

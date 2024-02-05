@@ -26,19 +26,14 @@ class AudioFileReader(FileReader):
     # super class init
     super().__init__(cfg)
 
-    #print(self.file_dict)
-    #stop
-
-    # print
-    [print(f) for f in self.file_dict['train']], [print(f) for f in self.file_dict['val']]
-    [print(f) for f in self.anno_file_dict['train']], [print(f) for f in self.anno_file_dict['val']]
-
 
   def __iter__(self):
     """
     iterate
     """
-    self.it_audio_files = [Path(f) for f in self.get_audio_files()]
+
+    # get audio files
+    self.it_audio_files = [Path(f) for f in self.get_audio_files()['train' if self.cfg['trainloader'] else 'val']]
     self.it_anno_files = [Path(f).parent / (str(Path(f).stem) + '.csv') for f in self.it_audio_files]
     self.it = 0
     self.n_it = len(self.it_audio_files)
@@ -118,7 +113,18 @@ class AudioFileReader(FileReader):
     """
     get the saved npy files
     """
-    return sorted(glob(self.out_path + '**/*' + self.cfg['ext'], recursive=True))
+
+    # get all files
+    all_files = sorted(glob(self.out_path + '**/*' + self.cfg['ext'], recursive=True))
+
+    # sub folders (train, val)
+    sub_folders = np.unique([Path(f).parent.parent.name for f in all_files])
+
+    # create train / val directory
+    all_files_dict = {}
+    [all_files_dict.update({sub_folder: [f for f in all_files if Path(f).parent.parent.name == sub_folder]}) for sub_folder in sub_folders]
+
+    return all_files_dict
 
 
   def raw_data_processing(self, data):
@@ -221,6 +227,7 @@ class AudioFileReader(FileReader):
             csv_writer.writeheader()
             csv_writer.writerows(relevant_anno)
           #np.save(out_file, x_proc)
+
 
 
 if __name__ == '__main__':

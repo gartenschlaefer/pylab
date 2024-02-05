@@ -37,7 +37,10 @@ audio_file_reader:
   split_in_sec: 60
 
   # redo extraction
-  redo_extraction: false
+  redo_extraction: False
+
+  # train loader
+  trainloader: True
 
 
 dataset:
