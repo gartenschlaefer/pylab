@@ -27,6 +27,9 @@ class FileReader():
     # file dict
     self.file_dict = {k: sorted(glob(cfg['src_path'] + v + '**/*' + cfg['ext'])) for k, v in cfg['subdirs'].items()}
 
+    # anno file dict
+    self.anno_file_dict = {k: sorted(glob(cfg['src_path'] + v + '**/*' + cfg['anno_ext'])) for k, v in cfg['subdirs'].items()} if 'anno_ext' in self.cfg.keys() else None
+
     # filter files
     self.filter_files()
 
@@ -38,29 +41,8 @@ class FileReader():
     pass
 
 
-  def get_npy_files(self):
-    """
-    get the saved npy files
-    """
-    return sorted(glob(self.out_path + '*.npy'))
-
-
-  def init_data_container(self, data):
-    """
-    init data container
-    """
-    return { 'x': { }, 'y': { } }
-
-
   def raw_data_processing(self, data):
     """
     raw processing
-    """
-    pass
-     
-
-  def save_data_to_npy(self):
-    """
-    saves the  data in own file format (remove unnecessary data)
     """
     pass

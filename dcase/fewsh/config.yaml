@@ -17,6 +17,7 @@ audio_file_reader:
 
   # file extension
   ext: '.wav'
+  anno_ext: '.csv'
 
   # training subdir
   #subdir_tain: 'Training_Set/'
@@ -36,7 +37,7 @@ audio_file_reader:
   split_in_sec: 60
 
   # redo extraction
-  redo_extraction: true
+  redo_extraction: false
 
 
 dataset:
