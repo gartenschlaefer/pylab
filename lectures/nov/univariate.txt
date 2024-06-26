@@ -1,0 +1,20 @@
+\begin{table}[ht!]
+\begin{center}
+\begin{tabular}{| M{2cm} | M{2cm} | M{2cm} | M{2cm} | M{2cm} | M{2cm} | M{2cm} | M{2cm} | M{2cm} | M{2cm} |}
+\hline
+\rowcolor{LightYellow}
+\textbf{step size s} & \textbf{mult. factor k} & \textbf{f(a)} & \textbf{f(b)} & \textbf{f(b)-f(a)} & \textbf{a} & \textbf{b} & \textbf{b-a} & \textbf{function calls} & \textbf{x min} \\
+\hline
+0.01 & 2 & [-0.3491] & [-0.2487] & [0.1004] & [0.16] & [0.64] & [0.48] & 6 &  [0.4] \\
+0.1 & 2 & [-0.4197] & [0.2601] & [0.6798] & [0.2] & [0.8] & [0.6] & 3 &  [0.5] \\
+1.0 & 2 & [0.] & [1.1924] & [1.1924] & [0.] & [-6.] & [-6.] & 3 &  [-3.] \\
+0.01 & 4 & [-0.1387] & [0.4864] & [0.6251] & [0.06] & [0.86] & [0.8] & 4 &  [0.46] \\
+0.1 & 4 & [-0.2274] & [-0.3447] & [-0.1173] & [0.1] & [0.6] & [0.5] & 2 &  [0.35] \\
+1.0 & 4 & [1.032] & [1.4508] & [0.4187] & [1.] & [-4.] & [-5.] & 2 &  [-1.5] \\
+\hline
+\end{tabular}
+\end{center}
+\caption{univariate}
+\label{tab:univariate}
+\end{table}
+\noindent

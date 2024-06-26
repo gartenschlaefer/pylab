@@ -1,0 +1,28 @@
+# --
+# microphone parameters
+
+mic_params:
+
+  # plot of mic
+  plot_path: 'ignore/mic/'
+
+  # slect specific device
+  select_device: True
+
+  # sel device id
+  device: 8
+
+  # sampling frequency of your microphone device (idealy this would be 16000, as it will be downsampled to it)
+  #fs_device: 32000
+  #fs_device: 48000
+  #fs_device: 41000
+  fs_device: [48000, 41000, 32000]
+
+  # blocksize
+  blocksize: 480
+
+  # channels to be recorded
+  channels: 1
+
+  # energy threshold for onsets
+  energy_thresh_db: -40.0

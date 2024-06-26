@@ -13,13 +13,20 @@ def np_table(name, a, header=[], params=[]):
     @returns:
       None
   """
+
+  assert len(a) and len(a[0])
+
+  # dim
+  n_rows = len(a)
+  n_cols = len(a[0])
+
   # precision
   np.set_printoptions(precision=4)
 
   table_str = '\\begin{table}[ht!]\n\\begin{center}\n\\begin{tabular}{'
 
   # layout
-  for col in range(a.shape[1]):
+  for col in range(n_cols):
     table_str += '| M{2cm} '
 
   table_str += '|}\n\\hline\n'
@@ -40,12 +47,11 @@ def np_table(name, a, header=[], params=[]):
 
     table_str += '\\textbf{{{:.4f}}} \\\\\n\\hline\n'.format(params[-1])
 
-  # content
-  for row in range(a.shape[0]):
+  # content rows
+  for row in range(n_rows):
 
-    for col in range(a.shape[1] - 1):
-      table_str += '{} & '.format(a[row][col])
-
+    # column
+    for col in range(n_cols - 1): table_str += '{} & '.format(a[row][col])
     table_str += ' {} \\\\\n'.format(a[row][col+1])
 
   # footer

@@ -1,0 +1,5 @@
+# --
+# config for lk
+
+# video source
+video_src: "/world/mapletree/datasets/my_pixel_set/video/cow_video_256px_2fps.avi"

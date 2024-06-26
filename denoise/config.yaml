@@ -1,0 +1,24 @@
+# --
+# config
+
+# mypylib path
+mypylib_path: '/world/mapletree/git/mypylib'
+#mypylib_path: '/world/dekutree/git/mypylib'
+
+# --
+# file reader
+file_reader:
+
+  # source path
+  src_path: '/world/mapletree/datasets/test_sounds/dcase_fewsh'
+
+  # subdirs
+  #subdirs: []
+
+  # extension
+  ext: '.wav'
+
+
+# --
+# click removal
+click_removal: null

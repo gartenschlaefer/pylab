@@ -1,0 +1,25 @@
+# --
+# config lpc
+
+# mypylib path
+mypylib_path: '/world/mapletree/git/mypylib'
+#mypylib_path: '/world/dekutree/git/mypylib'
+
+# --
+# file reader
+file_reader:
+
+  # source path
+  src_path: '/world/mapletree/datasets/test_sounds/vowels'
+
+  # subdirs
+  #subdirs: []
+
+  # extension
+  ext: '.mp3'
+
+
+# --
+# lpc
+lpc:
+  order: 6

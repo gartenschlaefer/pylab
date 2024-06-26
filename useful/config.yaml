@@ -1,0 +1,17 @@
+# --
+# config for resizer
+
+# resize params
+rs_params:
+
+  scale: 16
+  out_path: "/world/mapletree/datasets/my_pixel_set/video/out/"
+  video_name: "out.avi"
+  file_ext: ".png"
+  fps: 2
+
+
+# input params
+dataset_path: "/world/mapletree/datasets/my_pixel_set/video/"
+file_ext: ".png"
+

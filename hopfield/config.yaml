@@ -1,0 +1,7 @@
+# --
+# config for hopfield
+
+is_continuous: True
+dataset_path: "/world/mapletree/datasets/my_pixel_set/"
+train_folder: "train/"
+retrieve_folder: "retrieve/"

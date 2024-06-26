@@ -25,8 +25,8 @@ def get_brackets(fx, g, x0, s, k = 2):
   a = x0
   b = x0 + g * s
 
-  a_list = [a]
-  b_list = [b]
+  a_list = list([a])
+  b_list = list([b])
 
   # check if downhill direction
   if fx(b) > fx(a):
@@ -263,7 +263,7 @@ class ModelTester():
     print("params:\t | s \t| k \t| f(a) \t\t| f(b) \t\t| f(b)-f(a) \t| a \t\t| b \t\t| b-a \t\t| f-calls \t| x_min \t|")
     
     # list for printing
-    table_list = np.empty((0, 10))
+    table_list = []
 
     # run over param list
     for s, k in zip(step_sizes, k_factors):
@@ -273,9 +273,11 @@ class ModelTester():
 
       # sectioning
       xs, sec_list, f_calls_s = sectioning(a, b)
-
+      row = [s, k, self.fx(a), self.fx(b), self.fx(b) - self.fx(a), a, b, b-a, f_calls_b, xs]
+      print(row)
+      #stop
       # update list
-      table_list = np.vstack((table_list, (s, k, self.fx(a), self.fx(b), self.fx(b) - self.fx(a), str(a), str(b), str(b-a), f_calls_b, str(xs))))
+      table_list.append(row)
 
       # for printing of numpy arrays -> precision
       np.set_printoptions(precision=4)
@@ -293,9 +295,10 @@ class ModelTester():
 
 
 
-# --
-# Main function
 if __name__ == '__main__':
+  """
+  main
+  """
 
   # --
   # objective functions
@@ -321,7 +324,7 @@ if __name__ == '__main__':
   # line search univariate -> sine wave task1
 
   # starting point
-  x0 = 0.0
+  x0 = np.array([0.0])
 
   # search direction
   g = np.array([1])
